@@ -13,6 +13,8 @@ import { RedirectToDashboard } from './components/RedirectToDashboard';
 
 // Páginas públicas
 import { Login } from './pages/Login';
+import { ConfiguracaoDebug } from './pages/ConfiguracaoDebug';
+import { ConfiguradorUUIDs } from './pages/ConfiguradorUUIDs';
 
 // Páginas autenticadas
 import { DashboardNovo } from './pages/DashboardNovo';
@@ -39,6 +41,8 @@ export function App() {
               <Routes>
                 {/* Rota pública */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/debug" element={<ConfiguracaoDebug />} />
+                <Route path="/setup-uuids" element={<ConfiguradorUUIDs />} />
 
                 {/* Raiz → redireciona baseado na autenticação */}
                 <Route path="/" element={<RedirectToDashboard />} />

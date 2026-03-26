@@ -35,7 +35,7 @@ async function main() {
   const clientes = JSON.parse(fs.readFileSync(base + '\\clientes_parsed.json', 'utf8'));
   const clientesRows = clientes.map(c => ({
     nome: c.nome || null,
-    fantasia: c.fantasia || null,
+    nome_fantasia: c.fantasia || null,
     cnpj_cpf: c.cnpj_cpf || null,
     tipo_pessoa: c.tipo_pessoa || null,
     tipo_cliente: c.tipo_cliente || null,
