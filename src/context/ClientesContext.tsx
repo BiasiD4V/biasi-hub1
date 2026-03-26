@@ -20,13 +20,27 @@ const ClientesContext = createContext<ClientesContextType | null>(null);
 
 // Mapear dados do Supabase para o tipo local
 function mapearClienteSupabase(cli: ClienteSupabase): Cliente {
+  const tipoPessoa = cli.tipo_pessoa?.toLowerCase();
+  const tipo: 'PF' | 'PJ' = tipoPessoa === 'física' || tipoPessoa === 'fisica' ? 'PF' : 'PJ';
+
+  const segmentoMap: Record<string, string> = {
+    privado: 'Privado',
+    publico: 'Público',
+    construtora: 'Construção Civil',
+    industria: 'Indústria',
+    prefeitura: 'Público',
+    predial: 'Predial',
+    comercio: 'Comércio',
+    residencial: 'Residencial',
+  };
+
   return {
     id: cli.id,
-    tipo: (cli.tipo as any) || 'PJ',
+    tipo,
     razaoSocial: cli.nome,
-    nomeFantasia: cli.nome,
-    cnpjCpf: '',
-    segmento: 'Construção Civil',
+    nomeFantasia: cli.nome_fantasia || undefined,
+    cnpjCpf: cli.cnpj_cpf || '',
+    segmento: segmentoMap[cli.tipo || ''] || 'Outro',
     contatoPrincipal: cli.contato_nome || undefined,
     telefone: cli.contato_telefone || undefined,
     email: cli.contato_email || undefined,

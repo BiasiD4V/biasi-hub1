@@ -4,8 +4,16 @@ export interface ClienteSupabase {
   id: string
   nome: string
   tipo: string | null
+  cnpj_cpf: string | null
+  nome_fantasia: string | null
+  tipo_pessoa: string | null
   cidade: string | null
   estado: string | null
+  endereco: string | null
+  bairro: string | null
+  cep: string | null
+  ie: string | null
+  codigo_erp: string | null
   contato_nome: string | null
   contato_email: string | null
   contato_telefone: string | null
