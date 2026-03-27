@@ -5,7 +5,6 @@ import { AuthProvider } from './context/AuthContext';
 import { CadastrosMestresProvider } from './context/CadastrosMestresContext';
 import { ClientesProvider } from './context/ClientesContext';
 import { NovoOrcamentoProvider } from './context/NovoOrcamentoContext';
-import { OrcamentosProvider } from './context/OrcamentosContext';
 
 // Layout autenticado
 import { LayoutAutenticado } from './components/layout/LayoutAutenticado';
@@ -34,8 +33,7 @@ import { Propostas } from './pages/Propostas';
 export function App() {
   return (
     <AuthProvider>
-      <OrcamentosProvider>
-        <CadastrosMestresProvider>
+      <CadastrosMestresProvider>
           <ClientesProvider>
           <NovoOrcamentoProvider>
             <BrowserRouter>
@@ -72,7 +70,6 @@ export function App() {
           </NovoOrcamentoProvider>
           </ClientesProvider>
         </CadastrosMestresProvider>
-      </OrcamentosProvider>
     </AuthProvider>
   );
 }
