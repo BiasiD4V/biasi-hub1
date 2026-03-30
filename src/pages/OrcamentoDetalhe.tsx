@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Building, Tag, Clock, CheckCircle, XCircle, FolderOpen, Edit2, Save, X, Copy } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Building, Tag, Clock, CheckCircle, XCircle, FolderOpen, Edit2, Save, X, Copy, Hammer } from 'lucide-react';
 import { useNovoOrcamento } from '../context/NovoOrcamentoContext';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadgeNovo } from '../components/ui/StatusBadgeNovo';
