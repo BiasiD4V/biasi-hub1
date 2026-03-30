@@ -19,7 +19,7 @@ export function TabelasAbas({ abas, abaInicial }: TabelasProps) {
   const abaContent = abas.find((a: TabelasAbsProps) => a.id === abaAtiva);
 
   return (
-    <div className="bg-white rounded-xl border-2 border-blue-400 shadow-md p-5 h-full flex flex-col">
+    <div className="bg-white rounded-xl border-2 border-blue-400 shadow-md p-5 flex flex-col">
       {/* Abas */}
       <div className="flex gap-1 border-b border-slate-200 mb-4 -mx-5 -mt-5 px-5 pt-5 pb-4 bg-blue-50">
         {abas.map((aba: TabelasAbsProps) => (
@@ -40,7 +40,7 @@ export function TabelasAbas({ abas, abaInicial }: TabelasProps) {
 
       {/* Conteúdo */}
       {abaContent && (
-        <div className="flex-1 min-h-0">
+        <div>
           {abaContent.content}
         </div>
       )}

@@ -17,6 +17,15 @@ export interface PropostaSupabase {
   data_limite: string | null
   ano: number | null
   created_at: string
+  // Funil / Prioridade
+  etapa_funil: string | null
+  resultado_comercial: string | null
+  chance_fechamento: string | null
+  urgencia: string | null
+  proxima_acao: string | null
+  data_proxima_acao: string | null
+  ultima_interacao: string | null
+  observacao_comercial: string | null
 }
 
 export interface FiltrosPropostas {
