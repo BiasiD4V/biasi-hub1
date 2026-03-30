@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { PlusCircle, Search, Users, Eye, Pencil, Power } from 'lucide-react';
 import { useClientes } from '../context/ClientesContext';
 import { StatusBadgeNovo } from '../components/ui/StatusBadgeNovo';
+import { ModalCliente } from '../components/clientes/ModalCliente';
+import type { Cliente } from '../domain/entities/Cliente';
 import { SEGMENTOS_CLIENTE } from '../domain/value-objects/SegmentoCliente';
 
 export function Clientes() {
@@ -11,8 +13,28 @@ export function Clientes() {
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'PF' | 'PJ'>('todos');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativo' | 'inativo'>('todos');
   const [filtroSegmento, setFiltroSegmento] = useState('todos');
-  // Stub — modal implementado na Fase 3
-  const [, setModalAberto] = useState(false);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
+  const [modoVisualizacao, setModoVisualizacao] = useState(false);
+
+  const abrirNovoCliente = () => {
+    setClienteEditando(null);
+    setModoVisualizacao(false);
+    setModalAberto(true);
+  };
+
+  const abrirVisualizacaoCliente = (cliente: Cliente) => {
+    setClienteEditando(cliente);
+    setModoVisualizacao(true);
+    setModalAberto(true);
+  };
+
+  const abrirEdicaoCliente = (cliente: Cliente) => {
+    setClienteEditando(cliente);
+    setModoVisualizacao(false);
+    setModalAberto(true);
+  };
+
 
   const filtrados = clientes.filter((c) => {
     const q = busca.toLowerCase();
@@ -35,6 +57,12 @@ export function Clientes() {
 
   return (
     <div className="flex flex-col h-full">
+      <ModalCliente
+        aberto={modalAberto}
+        onFechar={() => setModalAberto(false)}
+        clienteEditando={clienteEditando ?? undefined}
+        modoVisualizacao={modoVisualizacao}
+      />
       {/* Cabeçalho */}
       <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between">
         <div>
@@ -44,7 +72,7 @@ export function Clientes() {
           </p>
         </div>
         <button
-          onClick={() => setModalAberto(true)}
+          onClick={abrirNovoCliente}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm"
         >
           <PlusCircle size={16} />
@@ -258,12 +286,14 @@ export function Clientes() {
                         <div className="flex items-center gap-1">
                           <button
                             title="Visualizar"
+                            onClick={() => abrirVisualizacaoCliente(cliente)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                           >
                             <Eye size={15} />
                           </button>
                           <button
                             title="Editar"
+                            onClick={() => abrirEdicaoCliente(cliente)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                           >
                             <Pencil size={15} />

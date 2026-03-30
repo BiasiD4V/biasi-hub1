@@ -27,7 +27,6 @@ export const clientesRepository = {
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
-      .eq('ativo', true)
       .order('nome', { ascending: true })
 
     if (error) throw error

@@ -80,9 +80,22 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
   async function criarCliente(input: CriarClienteInput): Promise<string> {
     try {
       setErro(null);
+      const segmentoMap: Record<string, string> = {
+        'Privado': 'privado',
+        'Público': 'publico',
+        'Construção Civil': 'construtora',
+        'Indústria': 'industria',
+        'Predial': 'predial',
+        'Comércio': 'comercio',
+        'Residencial': 'residencial',
+        'Outro': 'outro',
+      };
       const novoCliente = await clientesRepository.criar({
         nome: input.razaoSocial,
-        tipo: input.tipo,
+        nome_fantasia: input.nomeFantasia || null,
+        cnpj_cpf: input.cnpjCpf || null,
+        tipo_pessoa: input.tipo === 'PF' ? 'Física' : 'Jurídica',
+        tipo: segmentoMap[input.segmento] || input.segmento || null,
         cidade: input.cidade || null,
         estado: input.uf || null,
         contato_nome: input.contatoPrincipal || null,
@@ -104,9 +117,22 @@ export function ClientesProvider({ children }: { children: ReactNode }) {
   async function editarCliente(id: string, input: EditarClienteInput): Promise<void> {
     try {
       setErro(null);
+      const segmentoMap: Record<string, string> = {
+        'Privado': 'privado',
+        'Público': 'publico',
+        'Construção Civil': 'construtora',
+        'Indústria': 'industria',
+        'Predial': 'predial',
+        'Comércio': 'comercio',
+        'Residencial': 'residencial',
+        'Outro': 'outro',
+      };
       const clienteAtualizado = await clientesRepository.atualizar(id, {
         nome: input.razaoSocial,
-        tipo: input.tipo || null,
+        nome_fantasia: input.nomeFantasia || null,
+        cnpj_cpf: input.cnpjCpf || null,
+        tipo_pessoa: input.tipo === 'PF' ? 'Física' : input.tipo === 'PJ' ? 'Jurídica' : null,
+        tipo: input.segmento ? (segmentoMap[input.segmento] || input.segmento) : null,
         cidade: input.cidade || null,
         estado: input.uf || null,
         contato_nome: input.contatoPrincipal || null,

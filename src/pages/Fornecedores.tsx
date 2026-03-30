@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Truck, MapPin, Phone } from 'lucide-react';
+import { PlusCircle, Search, Truck, MapPin, Phone, Eye, Pencil } from 'lucide-react';
 import { fornecedoresRepository, type FornecedorSupabase } from '../infrastructure/supabase/fornecedoresRepository';
+import { ModalFornecedor } from '../components/fornecedores/ModalFornecedor';
 
 export function Fornecedores() {
   const [fornecedores, setFornecedores] = useState<FornecedorSupabase[]>([]);
@@ -10,19 +11,56 @@ export function Fornecedores() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const porPagina = 50;
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        setCarregando(true);
-        const dados = await fornecedoresRepository.listarTodos();
-        setFornecedores(dados);
-      } catch (err) {
-        console.error('Erro ao carregar fornecedores:', err);
-      } finally {
-        setCarregando(false);
-      }
+  const [modalAberto, setModalAberto] = useState(false);
+  const [fornecedorEditando, setFornecedorEditando] = useState<FornecedorSupabase | null>(null);
+  const [modoVisualizacao, setModoVisualizacao] = useState(false);
+
+  const recarregarFornecedores = async () => {
+    setCarregando(true);
+    try {
+      const dados = await fornecedoresRepository.listarTodos();
+      setFornecedores(dados);
+    } finally {
+      setCarregando(false);
     }
-    carregar();
+  };
+
+  const abrirModalNovo = () => {
+    setFornecedorEditando(null);
+    setModoVisualizacao(false);
+    setModalAberto(true);
+  };
+
+  const abrirModalEditar = (forn: FornecedorSupabase) => {
+    setFornecedorEditando(forn);
+    setModoVisualizacao(false);
+    setModalAberto(true);
+  };
+
+  const abrirModalVisualizar = (forn: FornecedorSupabase) => {
+    setFornecedorEditando(forn);
+    setModoVisualizacao(true);
+    setModalAberto(true);
+  };
+
+  const onSalvarFornecedor = async (fornecedor: Omit<FornecedorSupabase, 'id' | 'criado_em' | 'atualizado_em'>) => {
+    try {
+      if (fornecedorEditando) {
+        await fornecedoresRepository.atualizar(fornecedorEditando.id, fornecedor);
+      } else {
+        await fornecedoresRepository.criar(fornecedor);
+      }
+      await recarregarFornecedores();
+      setModalAberto(false);
+    } catch (err) {
+      console.error('Erro ao salvar fornecedor:', err);
+      throw err;
+    }
+  };
+
+
+  useEffect(() => {
+    recarregarFornecedores();
   }, []);
 
   const ufs = [...new Set(fornecedores.map(f => f.uf).filter(Boolean))].sort();
@@ -46,9 +84,25 @@ export function Fornecedores() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-6 border-b border-slate-200 bg-white">
-        <h1 className="text-2xl font-bold text-slate-800">Fornecedores</h1>
-        <p className="text-sm text-slate-500 mt-1">Cadastro e gestão de fornecedores e parceiros.</p>
+      <ModalFornecedor
+        aberto={modalAberto}
+        onFechar={() => setModalAberto(false)}
+        onSalvar={onSalvarFornecedor}
+        fornecedorEditando={fornecedorEditando}
+        modoVisualizacao={modoVisualizacao}
+      />
+      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Fornecedores</h1>
+          <p className="text-sm text-slate-500 mt-1">Cadastro e gestão de fornecedores e parceiros.</p>
+        </div>
+        <button
+          onClick={abrirModalNovo}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm"
+        >
+          <PlusCircle size={16} />
+          Novo Fornecedor
+        </button>
       </div>
 
       <div className="flex-1 p-8 overflow-auto">
@@ -101,6 +155,7 @@ export function Fornecedores() {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Cidade / UF</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Telefone</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Avaliação</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -140,6 +195,24 @@ export function Fornecedores() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-xs text-slate-600">{f.avaliacao || <span className="text-slate-300">—</span>}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <button
+                              title="Visualizar"
+                              onClick={() => abrirModalVisualizar(f)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              title="Editar"
+                              onClick={() => abrirModalEditar(f)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -53,4 +53,27 @@ export const fornecedoresRepository = {
     if (error) throw error
     return data
   },
+
+  async criar(fornecedor: Partial<FornecedorSupabase>): Promise<FornecedorSupabase> {
+    const { data, error } = await supabase
+      .from('fornecedores')
+      .insert(fornecedor)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  async atualizar(id: string, fornecedor: Partial<FornecedorSupabase>): Promise<FornecedorSupabase> {
+    const { data, error } = await supabase
+      .from('fornecedores')
+      .update({ ...fornecedor, atualizado_em: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
 }

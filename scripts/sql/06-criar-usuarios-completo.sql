@@ -136,7 +136,93 @@ VALUES (
 )
 ON CONFLICT(email) DO NOTHING;
 
--- 4️⃣ Inserir perfis na tabela usuarios (referenciando os users criados)
+-- 4️⃣ Criar usuário: Giovani
+INSERT INTO auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  created_at,
+  updated_at,
+  role,
+  aud,
+  confirmation_token,
+  confirmation_sent_at,
+  recovery_token,
+  recovery_sent_at,
+  email_change_token,
+  email_change_sent_at,
+  last_sign_in_at,
+  raw_app_meta_data,
+  raw_user_meta_data
+)
+VALUES (
+  gen_random_uuid(),
+  '00000000-0000-0000-0000-000000000000',
+  'giovani@biasiengenharia.com',
+  crypt('1234', gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  'authenticated',
+  'authenticated',
+  '',
+  now(),
+  '',
+  now(),
+  '',
+  now(),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"nome":"Giovani","papel":"user"}'
+)
+ON CONFLICT(email) DO NOTHING;
+
+-- 5️⃣ Criar usuário: Jennifer
+INSERT INTO auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  created_at,
+  updated_at,
+  role,
+  aud,
+  confirmation_token,
+  confirmation_sent_at,
+  recovery_token,
+  recovery_sent_at,
+  email_change_token,
+  email_change_sent_at,
+  last_sign_in_at,
+  raw_app_meta_data,
+  raw_user_meta_data
+)
+VALUES (
+  gen_random_uuid(),
+  '00000000-0000-0000-0000-000000000000',
+  'jennifer@biasiengenharia.com',
+  crypt('1234', gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  'authenticated',
+  'authenticated',
+  '',
+  now(),
+  '',
+  now(),
+  '',
+  now(),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"nome":"Jennifer","papel":"user"}'
+)
+ON CONFLICT(email) DO NOTHING;
+
+-- 6️⃣ Inserir perfis na tabela usuarios (referenciando os users criados)
 INSERT INTO public.usuarios (id, nome, email, papel, ativo)
 SELECT id, 
   raw_user_meta_data->>'nome', 
@@ -147,7 +233,9 @@ FROM auth.users
 WHERE email IN (
   'guilherme@biasiengenharia.com',
   'pauloconfar@biasiengenharia.com',
-  'ryan.stradioto@biasiengenharia.com'
+  'ryan.stradioto@biasiengenharia.com',
+  'giovani@biasiengenharia.com',
+  'jennifer@biasiengenharia.com'
 )
 ON CONFLICT (id) DO UPDATE SET
   nome = EXCLUDED.nome,
