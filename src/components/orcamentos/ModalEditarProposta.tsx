@@ -5,7 +5,7 @@ import { propostasRepository } from '../../infrastructure/supabase/propostasRepo
 import { ETAPA_LABELS, ORDEM_FUNIL } from '../../domain/value-objects/EtapaFunil';
 import { RESULTADO_LABELS } from '../../domain/value-objects/ResultadoComercial';
 import type { ResultadoComercial } from '../../domain/value-objects/ResultadoComercial';
-import type { EtapaFunil } from '../../domain/value-objects/EtapaFunil';
+
 
 interface Props {
   proposta: PropostaSupabase | null;

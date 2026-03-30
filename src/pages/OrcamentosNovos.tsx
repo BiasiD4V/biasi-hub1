@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Search, FileText, LayoutGrid, List, TrendingUp, CheckCircle, DollarSign, BarChart2, AlertTriangle, Clock, Calendar } from 'lucide-react';
+import { PlusCircle, Search, FileText, LayoutGrid, List, TrendingUp, CheckCircle, DollarSign, BarChart2, AlertTriangle } from 'lucide-react';
 import { useNovoOrcamento } from '../context/NovoOrcamentoContext';
 import { ModalNovoOrcamento } from '../components/orcamentos/ModalNovoOrcamento';
 import { KanbanFunil } from '../components/orcamentos/KanbanFunil';
