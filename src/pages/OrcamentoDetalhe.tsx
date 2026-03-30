@@ -12,7 +12,7 @@ import { HistoricoEtapas } from '../components/orcamentos/HistoricoEtapas';
 import { AlertasOrcamento } from '../components/orcamentos/AlertasOrcamento';
 import { ModalNovoFollowUp } from '../components/orcamentos/ModalNovoFollowUp';
 
-import { propostasRepository, type PropostaSupabase } from '../infrastructure/supabase/propostasRepository';
+import { propostasRepository, type PropostaSupabase, type MudancaEtapaRow, type FollowUpRow } from '../infrastructure/supabase/propostasRepository';
 import type { FollowUp } from '../domain/entities/FollowUp';
 import type { MudancaEtapa } from '../domain/entities/MudancaEtapa';
 import type { DadosFechamento } from '../components/orcamentos/ModalFechamentoComercial';
@@ -35,6 +35,31 @@ function etapaSegura(v: string | null): EtapaFunil {
 function resultadoSeguro(v: string | null): ResultadoComercial {
   if (v && v in RESULTADO_CORES) return v as ResultadoComercial;
   return RESULTADO_DEFAULT;
+}
+
+function rowParaMudanca(r: MudancaEtapaRow): MudancaEtapa {
+  return {
+    id: r.id,
+    orcamentoId: r.proposta_id,
+    etapaAnterior: r.etapa_anterior as EtapaFunil | null,
+    etapaNova: r.etapa_nova as EtapaFunil,
+    responsavel: r.responsavel,
+    observacao: r.observacao ?? undefined,
+    data: r.created_at,
+  };
+}
+
+function rowParaFollowUp(r: FollowUpRow): FollowUp {
+  return {
+    id: r.id,
+    orcamentoId: r.proposta_id,
+    tipo: (r.tipo || 'observacao') as FollowUp['tipo'],
+    data: r.data,
+    responsavel: r.responsavel,
+    resumo: r.resumo,
+    proximaAcao: r.proxima_acao ?? undefined,
+    dataProximaAcao: r.data_proxima_acao ?? undefined,
+  };
 }
 
 /* Helper: converte PropostaSupabase → OrcamentoCard (parcial) */
@@ -102,9 +127,15 @@ export function OrcamentoDetalhe() {
     if (orcMock || !id) return;
     let cancelado = false;
     setCarregando(true);
-    propostasRepository.buscarPorId(id).then((p) => {
+    Promise.all([
+      propostasRepository.buscarPorId(id),
+      propostasRepository.listarMudancasEtapa(id),
+      propostasRepository.listarFollowUps(id),
+    ]).then(([p, mudancas, fups]) => {
       if (!cancelado) {
         setPropostaSupa(p);
+        setLocalMudancas(mudancas.map(rowParaMudanca));
+        setLocalFollowUps(fups.map(rowParaFollowUp));
         setCarregando(false);
       }
     }).catch(() => { if (!cancelado) setCarregando(false); });
@@ -160,20 +191,20 @@ export function OrcamentoDetalhe() {
     if (!id) return;
     if (isSupa) {
       const etapaAnterior = orc?.etapaFunil ?? null;
+      const resp = usuario?.nome ?? 'Usuário';
       propostasRepository.atualizar(id, { etapa_funil: etapaNova }).then((p) => {
         setPropostaSupa(p);
-        setLocalMudancas((prev) => [
-          {
-            id: crypto.randomUUID(),
-            orcamentoId: id,
-            etapaAnterior: etapaAnterior as EtapaFunil | null,
-            etapaNova,
-            responsavel: usuario?.nome ?? 'Usuário',
-            observacao,
-            data: new Date().toISOString(),
-          },
-          ...prev,
-        ]);
+      });
+      propostasRepository.inserirMudancaEtapa({
+        proposta_id: id,
+        etapa_anterior: etapaAnterior,
+        etapa_nova: etapaNova,
+        responsavel: resp,
+        observacao: observacao ?? null,
+      }).then((row) => {
+        if (row) {
+          setLocalMudancas((prev) => [rowParaMudanca(row), ...prev]);
+        }
       });
     } else {
       atualizarEtapaFunil(id, etapaNova, usuario?.nome ?? 'Paulo Confar', observacao);
@@ -535,7 +566,22 @@ export function OrcamentoDetalhe() {
           onFechar={() => setModalFollowUpAberto(false)}
           orcamentoId={id}
           onRegistrado={isSupa ? (fu) => {
-            setLocalFollowUps((prev) => [fu, ...prev]);
+            // Persistir follow-up na tabela follow_ups
+            propostasRepository.inserirFollowUp({
+              proposta_id: id,
+              tipo: fu.tipo,
+              data: fu.data,
+              responsavel: fu.responsavel,
+              resumo: fu.resumo,
+              proxima_acao: fu.proximaAcao ?? null,
+              data_proxima_acao: fu.dataProximaAcao ?? null,
+            }).then((row) => {
+              if (row) {
+                setLocalFollowUps((prev) => [rowParaFollowUp(row), ...prev]);
+              } else {
+                setLocalFollowUps((prev) => [fu, ...prev]);
+              }
+            });
             // Salvar próxima ação no Supabase
             if (fu.proximaAcao) {
               propostasRepository.atualizar(id, {

@@ -36,6 +36,28 @@ export interface FiltrosPropostas {
   responsavel?: string | null
 }
 
+export interface MudancaEtapaRow {
+  id: string
+  proposta_id: string
+  etapa_anterior: string | null
+  etapa_nova: string
+  responsavel: string
+  observacao: string | null
+  created_at: string
+}
+
+export interface FollowUpRow {
+  id: string
+  proposta_id: string
+  tipo: string
+  data: string
+  responsavel: string
+  resumo: string
+  proxima_acao: string | null
+  data_proxima_acao: string | null
+  created_at: string
+}
+
 export const propostasRepository = {
   async listarTodas(
     pagina: number = 0,
@@ -222,6 +244,50 @@ export const propostasRepository = {
       .eq('id', id)
       .single()
     if (error) return null
+    return data
+  },
+
+  // === Mudanças de Etapa ===
+
+  async listarMudancasEtapa(propostaId: string): Promise<MudancaEtapaRow[]> {
+    const { data, error } = await supabase
+      .from('mudancas_etapa')
+      .select('*')
+      .eq('proposta_id', propostaId)
+      .order('created_at', { ascending: false })
+    if (error) { console.error('mudancas_etapa:', error); return [] }
+    return data || []
+  },
+
+  async inserirMudancaEtapa(row: Omit<MudancaEtapaRow, 'id' | 'created_at'>): Promise<MudancaEtapaRow | null> {
+    const { data, error } = await supabase
+      .from('mudancas_etapa')
+      .insert(row)
+      .select()
+      .single()
+    if (error) { console.error('inserirMudancaEtapa:', error); return null }
+    return data
+  },
+
+  // === Follow-ups ===
+
+  async listarFollowUps(propostaId: string): Promise<FollowUpRow[]> {
+    const { data, error } = await supabase
+      .from('follow_ups')
+      .select('*')
+      .eq('proposta_id', propostaId)
+      .order('data', { ascending: false })
+    if (error) { console.error('follow_ups:', error); return [] }
+    return data || []
+  },
+
+  async inserirFollowUp(row: Omit<FollowUpRow, 'id' | 'created_at'>): Promise<FollowUpRow | null> {
+    const { data, error } = await supabase
+      .from('follow_ups')
+      .insert(row)
+      .select()
+      .single()
+    if (error) { console.error('inserirFollowUp:', error); return null }
     return data
   },
 }
