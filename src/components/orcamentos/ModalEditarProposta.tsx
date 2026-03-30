@@ -92,7 +92,7 @@ export function ModalEditarProposta({
         tipo: form.tipo || null,
         data_limite: form.data_limite || null,
       };
-      const atualizado = await propostasRepository.atualizar(proposta.id, dados);
+      const atualizado = await propostasRepository.atualizar(proposta!.id, dados);
       onSalvo(atualizado);
     } catch (e: any) {
       console.error(e);
