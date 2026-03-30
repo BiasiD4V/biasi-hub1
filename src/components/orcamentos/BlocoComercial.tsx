@@ -5,6 +5,7 @@ import type { EtapaFunil } from '../../domain/value-objects/EtapaFunil';
 import { ETAPA_LABELS, ETAPA_CORES, ORDEM_FUNIL } from '../../domain/value-objects/EtapaFunil';
 import { RESULTADO_LABELS, RESULTADO_CORES } from '../../domain/value-objects/ResultadoComercial';
 import { ModalFechamentoComercial, type DadosFechamento } from './ModalFechamentoComercial';
+import { ModalConfirmarMudancaEtapa } from './ModalConfirmarMudancaEtapa';
 
 interface BlocoComercialProps {
   orc: OrcamentoCard;
@@ -26,6 +27,8 @@ function formatarValor(valor?: number): string {
 export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamento }: BlocoComercialProps) {
   const [modalFechamento, setModalFechamento] = useState(false);
   const [tipoFechamento, setTipoFechamento] = useState<'ganho' | 'perdido'>('ganho');
+  const [modalConfirmacao, setModalConfirmacao] = useState(false);
+  const [etapaSelecionada, setEtapaSelecionada] = useState<EtapaFunil | null>(null);
 
   const corEtapa = ETAPA_CORES[orc.etapaFunil];
   const corResultado = RESULTADO_CORES[orc.resultadoComercial];
@@ -34,7 +37,16 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
   function handleMudarEtapa(e: React.ChangeEvent<HTMLSelectElement>) {
     const etapaNova = e.target.value as EtapaFunil;
     if (etapaNova !== orc.etapaFunil) {
-      onMudarEtapa(etapaNova);
+      setEtapaSelecionada(etapaNova);
+      setModalConfirmacao(true);
+    }
+  }
+
+  function handleConfirmarMudanca(observacao: string) {
+    if (etapaSelecionada) {
+      onMudarEtapa(etapaSelecionada, observacao);
+      setModalConfirmacao(false);
+      setEtapaSelecionada(null);
     }
   }
 
@@ -220,6 +232,19 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
         onFechar={() => setModalFechamento(false)}
         onConfirmar={confirmarFechamento}
       />
+
+      {etapaSelecionada && (
+        <ModalConfirmarMudancaEtapa
+          aberto={modalConfirmacao}
+          onFechar={() => {
+            setModalConfirmacao(false);
+            setEtapaSelecionada(null);
+          }}
+          onConfirmar={handleConfirmarMudanca}
+          etapaAtual={orc.etapaFunil}
+          etapaNova={etapaSelecionada}
+        />
+      )}
     </>
   );
 }

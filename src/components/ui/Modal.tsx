@@ -36,13 +36,14 @@ export function Modal({ aberto, onFechar, titulo, largura = 'lg', children }: Mo
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
         onClick={onFechar}
       />
 
       {/* Painel */}
       <div
-        className={`relative bg-white rounded-xl shadow-2xl w-full mx-4 ${LARGURAS[largura]} max-h-[90vh] flex flex-col`}
+        className={`relative bg-white rounded-xl shadow-2xl w-full mx-4 ${LARGURAS[largura]} max-h-[90vh] flex flex-col pointer-events-auto`}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
