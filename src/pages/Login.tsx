@@ -53,8 +53,7 @@ export function Login() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/logo-biasi.svg" alt="Biasi Engenharia" className="h-16 w-auto mb-2" />
-          <span className="text-sm font-semibold text-slate-500 tracking-wide">Sistema de Orçamentos</span>
+          <img src="/logo-biasi.png" alt="Biasi Engenharia" className="h-20 w-auto" />
         </div>
 
         {/* Card */}

@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { SidebarAutenticada } from './SidebarAutenticada';
+import { PauloAjuda } from './PauloAjuda';
 import { useAuth } from '../../context/AuthContext';
 
 export function LayoutAutenticado() {
@@ -47,6 +48,7 @@ export function LayoutAutenticado() {
       <main className="ml-64 flex-1 flex flex-col min-h-screen">
         <Outlet />
       </main>
+      <PauloAjuda />
     </div>
   );
 }

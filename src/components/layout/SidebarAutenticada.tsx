@@ -73,7 +73,7 @@ export function SidebarAutenticada() {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-slate-900 flex flex-col z-40">
       {/* Logo */}
       <div className="flex items-center justify-center px-5 py-5 border-b border-slate-800">
-        <img src="/logo-biasi-branco.svg" alt="Biasi Engenharia" className="h-12 w-auto" />
+        <img src="/logo-biasi-branco.png" alt="Biasi Engenharia" className="h-10 w-auto" />
       </div>
 
       {/* Navegação */}
