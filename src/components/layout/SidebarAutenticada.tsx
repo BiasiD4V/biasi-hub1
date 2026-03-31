@@ -14,7 +14,6 @@ import {
   Hammer,
   ListChecks,
   Smartphone,
-  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
