@@ -604,7 +604,7 @@ export function DashboardBI() {
                       outerRadius={90}
                       paddingAngle={2}
                       dataKey="value"
-                      label={({ name, percent }) => `${(name ?? '').toString().slice(0, 12)} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                      label={({ name, percent }: { name?: string; percent?: number }) => `${(name ?? '').toString().slice(0, 12)} ${((percent ?? 0) * 100).toFixed(0)}%`}
                       labelLine={false}
                       style={{ fontSize: 9 }}
                     >

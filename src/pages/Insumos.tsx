@@ -518,7 +518,7 @@ export function Insumos() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {insumos.map((ins, idx) => (
+                  {insumos.map((ins) => (
                     <tr key={ins.id} className="group hover:bg-blue-50/40 transition-colors">
                       <td className="pl-5 pr-3 py-3.5">
                         <p className="text-sm font-medium text-slate-800 leading-snug line-clamp-1 group-hover:text-blue-700 transition-colors">
