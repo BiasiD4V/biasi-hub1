@@ -1,6 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -23,12 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const bucket = 'anexos';
 
   try {
-    const { fileName, fileType, fileData, pasta } = req.body as {
-      fileName: string;
-      fileType: string;
-      fileData: string; // base64
-      pasta: string;
-    };
+    const { fileName, fileType, fileData, pasta } = req.body;
 
     if (!fileName || !fileData) {
       return res.status(400).json({ error: 'fileName and fileData are required' });
@@ -47,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'apikey': serviceKey,
           'Content-Type': fileType || 'application/octet-stream',
         },
-        body: new Uint8Array(fileBuffer),
+        body: fileBuffer,
       }
     );
 
