@@ -70,6 +70,7 @@ function rowParaMudanca(r: MudancaEtapaRow): MudancaEtapa {
     etapaNova: r.etapa_nova as EtapaFunil,
     responsavel: r.responsavel,
     observacao: r.observacao ?? undefined,
+    arquivo: r.arquivo ?? undefined,
     data: r.created_at,
   };
 }
@@ -82,6 +83,7 @@ function rowParaFollowUp(r: FollowUpRow): FollowUp {
     data: r.data,
     responsavel: r.responsavel,
     resumo: r.resumo,
+    arquivo: r.arquivo ?? undefined,
     proximaAcao: r.proxima_acao ?? undefined,
     dataProximaAcao: r.data_proxima_acao ?? undefined,
   };
@@ -489,6 +491,7 @@ export function OrcamentoDetalhe() {
                     resumo: updatedFup.resumo,
                     proxima_acao: updatedFup.proximaAcao || null,
                     data_proxima_acao: updatedFup.dataProximaAcao || null,
+                    arquivo: updatedFup.arquivo || null,
                   }).catch(() => {});
                 }
               }}
@@ -516,6 +519,7 @@ export function OrcamentoDetalhe() {
                   });
                   propostasRepository.atualizarMudancaEtapa(updatedMudanca.id, {
                     observacao: updatedMudanca.observacao || null,
+                    arquivo: updatedMudanca.arquivo || null,
                   }).catch(() => {});
                 }
               }}

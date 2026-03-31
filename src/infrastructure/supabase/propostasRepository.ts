@@ -44,6 +44,7 @@ export interface MudancaEtapaRow {
   etapa_nova: string
   responsavel: string
   observacao: string | null
+  arquivo: string | null
   created_at: string
 }
 
@@ -56,6 +57,7 @@ export interface FollowUpRow {
   resumo: string
   proxima_acao: string | null
   data_proxima_acao: string | null
+  arquivo: string | null
   created_at: string
 }
 
