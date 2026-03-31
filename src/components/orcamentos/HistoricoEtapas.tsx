@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { GitBranch, FileText, Edit2, X, Save, Trash2, Upload, ExternalLink } from 'lucide-react';
+import { GitBranch, FileText, Edit2, X, Save, Trash2, Upload, ExternalLink, Loader2 } from 'lucide-react';
 import type { MudancaEtapa } from '../../domain/entities/MudancaEtapa';
 import { ETAPA_LABELS, ETAPA_CORES } from '../../domain/value-objects/EtapaFunil';
+import { uploadArquivo, abrirArquivo, nomeArquivo } from '../../infrastructure/supabase/storageService';
 
 interface HistoricoEtapasProps {
   mudancas: MudancaEtapa[];
@@ -24,6 +25,7 @@ export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<MudancaEtapa | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   if (mudancas.length === 0) {
     return (
@@ -103,10 +105,10 @@ export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: 
                     <div className="mt-2 flex items-center gap-2">
                       <FileText size={14} className="text-slate-400" />
                       <button
-                        onClick={() => setFilePreviewOpen(m.arquivo!)}
+                        onClick={() => abrirArquivo(m.arquivo!)}
                         className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium"
                       >
-                        📎 {typeof m.arquivo === 'string' ? m.arquivo.split('/').pop() : 'Visualizar arquivo'}
+                        📎 {nomeArquivo(m.arquivo)}
                       </button>
                     </div>
                   )}
@@ -189,10 +191,10 @@ export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: 
                 </label>
                 {editForm.arquivo && (
                   <div className="mb-2 flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                    <span className="text-xs text-blue-700 truncate">📎 {editForm.arquivo.split('/').pop()}</span>
+                    <span className="text-xs text-blue-700 truncate">📎 {nomeArquivo(editForm.arquivo)}</span>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={() => setFilePreviewOpen(editForm.arquivo!)}
+                        onClick={() => abrirArquivo(editForm.arquivo!)}
                         className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
                         title="Abrir arquivo"
                       >
@@ -209,18 +211,26 @@ export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: 
                     </div>
                   </div>
                 )}
-                <label className="flex items-center justify-center w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                <label className={`flex items-center justify-center w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg transition-colors ${uploading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-slate-50'}`}>
                   <div className="flex items-center gap-2 text-slate-500 text-sm">
-                    <Upload size={14} />
-                    <span>Escolher arquivo</span>
+                    {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    <span>{uploading ? 'Enviando...' : 'Escolher arquivo'}</span>
                   </div>
                   <input
                     key={fileInputKey}
                     type="file"
-                    onChange={(e) => {
+                    disabled={uploading}
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setEditForm({ ...editForm, arquivo: file.name });
+                        setUploading(true);
+                        const result = await uploadArquivo(file, 'mudancas-etapa');
+                        if (result) {
+                          setEditForm({ ...editForm, arquivo: result.url });
+                        } else {
+                          setEditForm({ ...editForm, arquivo: `Arquivo: ${file.name}` });
+                        }
+                        setUploading(false);
                       }
                       setFileInputKey(k => k + 1);
                     }}

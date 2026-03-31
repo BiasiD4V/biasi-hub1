@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Phone, Mail, MessageCircle, Users, StickyNote, PlusCircle, FileText, Edit2, X, Save, Trash2, Upload, ExternalLink } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Users, StickyNote, PlusCircle, FileText, Edit2, X, Save, Trash2, Upload, ExternalLink, Loader2 } from 'lucide-react';
+import { uploadArquivo, abrirArquivo, nomeArquivo } from '../../infrastructure/supabase/storageService';
 import type { FollowUp, TipoFollowUp } from '../../domain/entities/FollowUp';
 
 interface TimelineFollowUpProps {
@@ -48,6 +49,7 @@ export function TimelineFollowUp({ followUps, onRegistrar, onUpdateFollowUp, onD
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FollowUp | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -133,10 +135,10 @@ export function TimelineFollowUp({ followUps, onRegistrar, onUpdateFollowUp, onD
                         <div className="mt-2 flex items-center gap-2">
                           <FileText size={14} className="text-slate-400" />
                           <button
-                            onClick={() => setFilePreviewOpen(fup.arquivo!)}
+                            onClick={() => abrirArquivo(fup.arquivo!)}
                             className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium"
                           >
-                            📎 {typeof fup.arquivo === 'string' ? fup.arquivo.split('/').pop() : 'Visualizar arquivo'}
+                            📎 {nomeArquivo(fup.arquivo)}
                           </button>
                         </div>
                       )}
@@ -265,10 +267,10 @@ export function TimelineFollowUp({ followUps, onRegistrar, onUpdateFollowUp, onD
                 </label>
                 {editForm.arquivo && (
                   <div className="mb-2 flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                    <span className="text-xs text-blue-700 truncate">📎 {editForm.arquivo.split('/').pop()}</span>
+                    <span className="text-xs text-blue-700 truncate">📎 {nomeArquivo(editForm.arquivo)}</span>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={() => setFilePreviewOpen(editForm.arquivo!)}
+                        onClick={() => abrirArquivo(editForm.arquivo!)}
                         className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
                         title="Abrir arquivo"
                       >
@@ -285,20 +287,26 @@ export function TimelineFollowUp({ followUps, onRegistrar, onUpdateFollowUp, onD
                     </div>
                   </div>
                 )}
-                <label className="flex items-center justify-center w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                <label className={`flex items-center justify-center w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg transition-colors ${uploading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-slate-50'}`}>
                   <div className="flex items-center gap-2 text-slate-500 text-sm">
-                    <Upload size={14} />
-                    <span>Escolher arquivo</span>
+                    {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    <span>{uploading ? 'Enviando...' : 'Escolher arquivo'}</span>
                   </div>
                   <input
                     key={fileInputKey}
                     type="file"
-                    onChange={(e) => {
+                    disabled={uploading}
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        // Aqui você pode fazer upload do arquivo se tiver storage
-                        // Por enquanto, apenas salva o nome
-                        setEditForm({ ...editForm, arquivo: file.name });
+                        setUploading(true);
+                        const result = await uploadArquivo(file, 'follow-ups');
+                        if (result) {
+                          setEditForm({ ...editForm, arquivo: result.url });
+                        } else {
+                          setEditForm({ ...editForm, arquivo: `Arquivo: ${file.name}` });
+                        }
+                        setUploading(false);
                       }
                       setFileInputKey(k => k + 1);
                     }}
