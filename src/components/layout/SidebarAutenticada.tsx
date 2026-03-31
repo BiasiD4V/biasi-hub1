@@ -65,6 +65,15 @@ const MENU: SecaoMenu[] = [
   },
 ];
 
+const MENU_ADMIN: SecaoMenu[] = [
+  {
+    titulo: 'Administração',
+    itens: [
+      { rotulo: 'Membros', para: '/membros', icone: Users },
+    ],
+  },
+];
+
 const classAtivo =
   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-blue-600 text-white font-medium';
 const classInativo =
@@ -83,6 +92,31 @@ export function SidebarAutenticada() {
       {/* Navegação */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         {MENU.map((secao) => (
+          <div key={secao.titulo}>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">
+              {secao.titulo}
+            </p>
+            <ul className="space-y-0.5">
+              {secao.itens.map((item) => {
+                const Icone = item.icone;
+                return (
+                  <li key={item.para}>
+                    <NavLink
+                      to={item.para}
+                      className={({ isActive }) => (isActive ? classAtivo : classInativo)}
+                    >
+                      <Icone size={17} />
+                      {item.rotulo}
+                    </NavLink>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+
+        {/* Menu admin-only */}
+        {usuario?.papel === 'admin' && MENU_ADMIN.map((secao) => (
           <div key={secao.titulo}>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">
               {secao.titulo}
