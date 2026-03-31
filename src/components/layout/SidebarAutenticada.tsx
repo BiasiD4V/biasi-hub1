@@ -93,11 +93,12 @@ export function SidebarAutenticada({ onNavigate }: SidebarProps) {
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-800">
         <img src="/logo-biasi-branco.png" alt="Biasi Engenharia" className="h-10 w-auto" />
         <button
-          onClick={onNavigate}
-          className="lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onNavigate?.(); }}
+          className="lg:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors -mr-2"
           aria-label="Fechar menu"
         >
-          <X size={20} />
+          <X size={22} />
         </button>
       </div>
 
