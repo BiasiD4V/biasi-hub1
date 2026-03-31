@@ -158,7 +158,7 @@ export function ModalCliente({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* ── Painel esquerdo: Identificação ── */}
           <div className="space-y-4">
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide pb-1 border-b border-slate-100">
@@ -330,7 +330,7 @@ export function ModalCliente({
             </div>
 
             {/* Cidade + UF lado a lado */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className={labelCls}>Cidade</label>
                 <input

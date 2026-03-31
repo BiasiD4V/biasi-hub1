@@ -108,7 +108,7 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
         </div>
 
         {/* Cliente + Tipo de Obra */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Cliente <span className="text-red-500">*</span>
@@ -154,7 +154,7 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
         </div>
 
         {/* Data-base + Responsável */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Data-base <span className="text-red-500">*</span>
@@ -186,7 +186,7 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Disciplinas <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {disciplinas
               .filter((d) => d.ativa)
               .map((d) => (

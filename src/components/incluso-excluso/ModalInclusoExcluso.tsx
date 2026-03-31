@@ -105,9 +105,9 @@ export function ModalInclusoExcluso({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Obra */}
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1">Obra *</label>
             <input
               type="text"
@@ -124,7 +124,7 @@ export function ModalInclusoExcluso({
           </div>
 
           {/* Serviço */}
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1">Serviço *</label>
             <input
               type="text"
@@ -166,7 +166,7 @@ export function ModalInclusoExcluso({
 
           {/* Motivo (obrigatório quando excluso) */}
           {form.tipo === 'excluso' && (
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-slate-600 mb-1">
                 Motivo da Exclusão *
               </label>
@@ -182,7 +182,7 @@ export function ModalInclusoExcluso({
           )}
 
           {/* Observação */}
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1">Observação</label>
             <textarea
               value={form.observacao}

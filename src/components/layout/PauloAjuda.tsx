@@ -158,7 +158,7 @@ export function PauloAjuda() {
       {aberto && (
         <div
           ref={panelRef}
-          className="fixed bottom-24 right-6 w-[380px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-slate-200 z-[9999] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4"
+          className="fixed bottom-24 right-4 left-4 sm:left-auto sm:right-6 sm:w-[380px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-slate-200 z-[9999] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4"
           style={{ animation: 'slideUp 0.3s ease-out' }}
         >
           {/* Header */}

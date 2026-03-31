@@ -142,7 +142,7 @@ export function TabelaMaoObra({ item, onAtualizar, onRemover }: TabelaMaoObraPro
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
       {/* Editar atividade */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Atividade</label>
           <input
@@ -204,7 +204,7 @@ export function TabelaMaoObra({ item, onAtualizar, onRemover }: TabelaMaoObraPro
         </div>
 
         {/* Adicionar profissional */}
-        <div className="grid grid-cols-4 gap-2 p-2 bg-slate-50 rounded border border-dashed border-slate-300">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 bg-slate-50 rounded border border-dashed border-slate-300">
           <input
             type="text"
             value={novoProfissional.profissao}

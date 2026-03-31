@@ -157,7 +157,7 @@ export function KanbanFunil({ orcamentos }: KanbanFunilProps) {
   });
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 min-h-0">
+    <div className="flex gap-4 overflow-x-auto pb-4 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
       {COLUNAS_KANBAN.map((etapa) => {
         const cards = porEtapa.get(etapa) ?? [];
         const cor = ETAPA_CORES[etapa];

@@ -11,21 +11,51 @@
 /* ── Mobile responsivo global ──────────────────────────── */
 @media (max-width: 1023px) {
   /* Reduzir padding das páginas no mobile */
-  .px-8 {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-  }
-  .p-8 {
-    padding: 1rem !important;
-  }
+  .px-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .p-8 { padding: 1rem !important; }
+  .py-6 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+
+  /* Grids: forçar 1 coluna no mobile (exceto grids que já têm breakpoints) */
+  .grid-cols-3:not([class*="sm:"]):not([class*="lg:"]) { grid-template-columns: 1fr !important; }
+  .grid-cols-4:not([class*="sm:"]):not([class*="lg:"]) { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* col-span corrigir para não quebrar em 1 coluna */
+  .col-span-2:not([class*="lg:"]) { grid-column: span 1 / span 1 !important; }
+  .col-span-3:not([class*="lg:"]) { grid-column: span 1 / span 1 !important; }
+
+  /* Modais: grids dentro de modais sempre 1 coluna */
+  [class*="fixed inset-0"] .grid-cols-2 { grid-template-columns: 1fr !important; }
+  [class*="fixed inset-0"] .grid-cols-3 { grid-template-columns: 1fr !important; }
+  [class*="fixed inset-0"] .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  [class*="fixed inset-0"] .col-span-2 { grid-column: span 1 / span 1 !important; }
+  [class*="fixed inset-0"] .col-span-3 { grid-column: span 1 / span 1 !important; }
+
+  /* Modais: limitar largura máxima */
+  [class*="fixed inset-0"] > div { max-width: 95vw !important; }
 
   /* Tabelas scrolláveis horizontalmente */
-  table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  thead, tbody, tr {
-    min-width: 600px;
-  }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Textos longos: prevenir overflow */
+  h1 { font-size: 1.25rem !important; }
+
+  /* Flex wrapping em headers */
+  .flex.items-center.justify-between { flex-wrap: wrap; gap: 0.5rem; }
+}
+
+/* ── Mobile pequeno (celulares) ──────────────────────────── */
+@media (max-width: 639px) {
+  /* Modais: grids de 4 colunas também para 1 no phone */
+  [class*="fixed inset-0"] .grid-cols-4 { grid-template-columns: 1fr !important; }
+
+  /* Forçar grid-cols-2 para 1 coluna em telas pequenas */
+  .grid-cols-2:not([class*="sm:"]):not([class*="lg:"]) { grid-template-columns: 1fr !important; }
+
+  /* Gap menor no mobile */
+  .gap-6 { gap: 1rem !important; }
+  .gap-8 { gap: 1rem !important; }
+
+  /* Buttons menores */
+  .text-sm { font-size: 0.8125rem !important; }
 }

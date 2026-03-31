@@ -70,7 +70,7 @@ export function AbaMaoObra({ orcamentoId: _orcamentoId }: AbaMaoObraProps) {
         {adicionar && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-slate-800 mb-3">Nova Atividade</h4>
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Atividade</label>
                 <input
@@ -152,7 +152,7 @@ export function AbaMaoObra({ orcamentoId: _orcamentoId }: AbaMaoObraProps) {
       {/* Resumo total */}
       {itens.length > 0 && (
         <div className="mt-4 pt-4 border-t border-slate-200 bg-slate-50 -mx-6 -mb-6 px-6 py-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-slate-500 mb-1">Total de Atividades</p>
               <p className="text-2xl font-bold text-slate-800">{itens.length}</p>

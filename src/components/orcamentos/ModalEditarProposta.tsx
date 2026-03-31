@@ -160,7 +160,7 @@ export function ModalEditarProposta({
           {/* Identificação */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Identificação</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Número</label>
                 <input
@@ -194,7 +194,7 @@ export function ModalEditarProposta({
           {/* Cliente / Obra */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Cliente e Obra</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Cliente</label>
                 <input
@@ -228,7 +228,7 @@ export function ModalEditarProposta({
           {/* Classificação */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Classificação</p>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Status</label>
                 <select
@@ -283,7 +283,7 @@ export function ModalEditarProposta({
           {/* Valores */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Valores</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Valor Orçado (R$)</label>
                 <input
@@ -320,7 +320,7 @@ export function ModalEditarProposta({
           {/* Funil Comercial */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Funil Comercial</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Etapa do Funil</label>
                 <select
@@ -374,7 +374,7 @@ export function ModalEditarProposta({
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Próxima Ação</label>
                 <input
