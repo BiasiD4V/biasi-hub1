@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Providers
@@ -28,12 +29,13 @@ import { Composicoes } from './pages/Composicoes';
 import { Templates } from './pages/Templates';
 import { Aprovacoes } from './pages/Aprovacoes';
 import { Relatorios } from './pages/Relatorios';
-import { DashboardBI } from './pages/DashboardBI';
 import { Propostas } from './pages/Propostas';
 import { MaoDeObra } from './pages/MaoDeObra';
 import { InclusoExcluso } from './pages/InclusoExcluso';
 import { MeusDispositivos } from './pages/MeusDispositivos';
 import { Membros } from './pages/Membros';
+
+const DashboardBI = lazy(() => import('./pages/DashboardBI').then((m) => ({ default: m.DashboardBI })));
 
 export function App() {
   return (
@@ -67,7 +69,14 @@ export function App() {
                   <Route path="/incluso-excluso" element={<InclusoExcluso />} />
                   <Route path="/aprovacoes" element={<Aprovacoes />} />
                   <Route path="/relatorios" element={<Relatorios />} />
-                  <Route path="/bi" element={<DashboardBI />} />
+                  <Route
+                    path="/bi"
+                    element={(
+                      <Suspense fallback={<div className="p-6 text-sm text-slate-500">Carregando BI...</div>}>
+                        <DashboardBI />
+                      </Suspense>
+                    )}
+                  />
                   <Route path="/operacao/orcamentos" element={<Propostas />} />
                   <Route path="/meus-dispositivos" element={<MeusDispositivos />} />
                   <Route path="/membros" element={<Membros />} />
