@@ -23,6 +23,10 @@ interface CadastrosMestresContextType {
   excluirUnidade: (id: string) => void;
   excluirRegiao: (id: string) => void;
   excluirCategoria: (id: string) => void;
+  criarDisciplina: (dados: Omit<Disciplina, 'id'>) => void;
+  criarUnidade: (dados: Omit<Unidade, 'id'>) => void;
+  criarRegiao: (dados: Omit<Regiao, 'id'>) => void;
+  criarCategoria: (dados: Omit<Categoria, 'id'>) => void;
 }
 
 const CadastrosMestresContext = createContext<CadastrosMestresContextType | null>(null);
@@ -59,6 +63,18 @@ export function CadastrosMestresProvider({ children }: { children: ReactNode }) 
   const excluirCategoria = (id: string) =>
     setCategorias((prev) => prev.filter((c) => c.id !== id));
 
+  const criarDisciplina = (dados: Omit<Disciplina, 'id'>) =>
+    setDisciplinas((prev) => [...prev, { ...dados, id: crypto.randomUUID() }]);
+
+  const criarUnidade = (dados: Omit<Unidade, 'id'>) =>
+    setUnidades((prev) => [...prev, { ...dados, id: crypto.randomUUID() }]);
+
+  const criarRegiao = (dados: Omit<Regiao, 'id'>) =>
+    setRegioes((prev) => [...prev, { ...dados, id: crypto.randomUUID() }]);
+
+  const criarCategoria = (dados: Omit<Categoria, 'id'>) =>
+    setCategorias((prev) => [...prev, { ...dados, id: crypto.randomUUID() }]);
+
   return (
     <CadastrosMestresContext.Provider
       value={{
@@ -74,6 +90,10 @@ export function CadastrosMestresProvider({ children }: { children: ReactNode }) 
         excluirUnidade,
         excluirRegiao,
         excluirCategoria,
+        criarDisciplina,
+        criarUnidade,
+        criarRegiao,
+        criarCategoria,
       }}
     >
       {children}
