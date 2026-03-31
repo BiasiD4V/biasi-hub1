@@ -442,7 +442,7 @@ export function MaoDeObra() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
             <p className="text-xs text-slate-500">Atividades</p>
             <p className="text-xl font-bold text-slate-800">{totalAtv}</p>

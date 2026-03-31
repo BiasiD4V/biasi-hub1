@@ -102,7 +102,7 @@ export function DashboardNovo() {
   return (
     <div className="flex flex-col h-full">
       {/* Cabeçalho */}
-      <div className="px-8 py-6 border-b border-slate-200 bg-white">
+      <div className="px-4 lg:px-8 py-6 border-b border-slate-200 bg-white">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
         <p className="text-sm text-slate-500 mt-1">
           Visão geral dos orçamentos e indicadores comerciais
@@ -110,7 +110,7 @@ export function DashboardNovo() {
       </div>
 
       {/* Conteúdo */}
-      <div className="flex-1 p-8 overflow-y-auto space-y-6">
+      <div className="flex-1 p-4 lg:p-8 overflow-y-auto space-y-6">
 
         {carregando ? (
           <div className="flex items-center justify-center py-20">
@@ -126,7 +126,7 @@ export function DashboardNovo() {
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
                 Pipeline
               </p>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KpiCard
                   label="Total de Propostas"
                   valor={dados.total.toLocaleString('pt-BR')}
@@ -166,7 +166,7 @@ export function DashboardNovo() {
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
                 Indicadores Financeiros
               </p>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KpiCard
                   label="Valor Total Orçado"
                   valor={formatarValor(dados.valorTotal)}
@@ -209,7 +209,7 @@ export function DashboardNovo() {
             </div>
 
             {/* ── Grid: ano + status + responsáveis ────────────────────── */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
               {/* Propostas por Ano */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
@@ -334,7 +334,7 @@ export function DashboardNovo() {
             </div>
 
             {/* ── Grid: disciplinas + últimas propostas ─────────────────── */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Por Disciplina */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
