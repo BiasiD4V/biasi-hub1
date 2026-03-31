@@ -47,7 +47,6 @@ export function TimelineFollowUp({ followUps, onRegistrar, onUpdateFollowUp, onD
   const [filePreviewOpen, setFilePreviewOpen] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FollowUp | null>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
 
   return (

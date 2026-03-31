@@ -152,8 +152,7 @@ export async function validateRememberedSession(): Promise<{
       .from('device_sessions')
       .update({ last_login_at: new Date().toISOString() })
       .eq('session_token', storedToken)
-      .then(() => {})
-      .catch(() => {});
+      .then(() => {}, () => {});
 
     console.log('✅ Remember Me: sessão restaurada com sucesso!');
     return {

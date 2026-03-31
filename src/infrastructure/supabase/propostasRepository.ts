@@ -26,6 +26,7 @@ export interface PropostaSupabase {
   data_proxima_acao: string | null
   ultima_interacao: string | null
   observacao_comercial: string | null
+  link_arquivo: string | null
 }
 
 export interface FiltrosPropostas {
@@ -289,5 +290,41 @@ export const propostasRepository = {
       .single()
     if (error) { console.error('inserirFollowUp:', error); return null }
     return data
+  },
+
+  async atualizarFollowUp(id: string, dados: Partial<Omit<FollowUpRow, 'id' | 'created_at'>>): Promise<boolean> {
+    const { error } = await supabase
+      .from('follow_ups')
+      .update(dados)
+      .eq('id', id)
+    if (error) { console.error('atualizarFollowUp:', error); return false }
+    return true
+  },
+
+  async deletarFollowUp(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('follow_ups')
+      .delete()
+      .eq('id', id)
+    if (error) { console.error('deletarFollowUp:', error); return false }
+    return true
+  },
+
+  async atualizarMudancaEtapa(id: string, dados: Partial<Omit<MudancaEtapaRow, 'id' | 'created_at'>>): Promise<boolean> {
+    const { error } = await supabase
+      .from('mudancas_etapa')
+      .update(dados)
+      .eq('id', id)
+    if (error) { console.error('atualizarMudancaEtapa:', error); return false }
+    return true
+  },
+
+  async deletarMudancaEtapa(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('mudancas_etapa')
+      .delete()
+      .eq('id', id)
+    if (error) { console.error('deletarMudancaEtapa:', error); return false }
+    return true
   },
 }

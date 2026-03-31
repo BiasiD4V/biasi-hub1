@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,8 +31,13 @@ export function Login() {
     setSolicitacaoEnviada(true);
   }
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
     return null;
   }
 

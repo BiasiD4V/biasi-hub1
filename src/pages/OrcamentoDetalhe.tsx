@@ -120,6 +120,7 @@ function propostaParaOrc(p: PropostaSupabase): OrcamentoCard {
     chanceFechamento: (p.chance_fechamento as any) ?? undefined,
     urgencia: (p.urgencia as any) ?? undefined,
     observacaoComercial: p.observacao_comercial ?? undefined,
+    linkArquivo: p.link_arquivo ?? undefined,
   };
 }
 
@@ -484,8 +485,11 @@ export function OrcamentoDetalhe() {
                     lsSaveFollowUps(id, next);
                     return next;
                   });
-                  // Tentar atualizar no Supabase
-                  (window as any).propostasRepository?.atualizarFollowUp?.(updatedFup).catch(() => {});
+                  propostasRepository.atualizarFollowUp(updatedFup.id, {
+                    resumo: updatedFup.resumo,
+                    proxima_acao: updatedFup.proximaAcao || null,
+                    data_proxima_acao: updatedFup.dataProximaAcao || null,
+                  }).catch(() => {});
                 }
               }}
               onDeleteFollowUp={(fupId) => {
@@ -495,8 +499,7 @@ export function OrcamentoDetalhe() {
                     lsSaveFollowUps(id, next);
                     return next;
                   });
-                  // Tentar deletar no Supabase
-                  (window as any).propostasRepository?.deletarFollowUp?.(fupId).catch(() => {});
+                  propostasRepository.deletarFollowUp(fupId).catch(() => {});
                 }
               }}
             />
@@ -511,8 +514,9 @@ export function OrcamentoDetalhe() {
                     lsSaveMudancas(id, next);
                     return next;
                   });
-                  // Tentar atualizar no Supabase
-                  (window as any).propostasRepository?.atualizarMudancaEtapa?.(updatedMudanca).catch(() => {});
+                  propostasRepository.atualizarMudancaEtapa(updatedMudanca.id, {
+                    observacao: updatedMudanca.observacao || null,
+                  }).catch(() => {});
                 }
               }}
               onDeleteMudanca={(mudancaId) => {
@@ -522,8 +526,7 @@ export function OrcamentoDetalhe() {
                     lsSaveMudancas(id, next);
                     return next;
                   });
-                  // Tentar deletar no Supabase
-                  (window as any).propostasRepository?.deletarMudancaEtapa?.(mudancaId).catch(() => {});
+                  propostasRepository.deletarMudancaEtapa(mudancaId).catch(() => {});
                 }
               }}
             />

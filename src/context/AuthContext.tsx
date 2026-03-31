@@ -66,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             inicializado.current = true;
             setErroConexao(null);
           } else if (_event === 'SIGNED_IN') {
+            if (session?.user && !usuario) {
+              await loadUserProfile(session.user.id);
+            }
             setLoading(false);
             inicializado.current = true;
             setErroConexao(null);
