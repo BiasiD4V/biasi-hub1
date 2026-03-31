@@ -36,6 +36,11 @@ interface PropostaRow {
   created_at: string;
 }
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number }>;
+}
+
 interface Filtros {
   anos: number[];
   status: string[];

@@ -16,7 +16,6 @@ import { ConfiguracaoDebug } from './pages/ConfiguracaoDebug';
 import { ConfiguradorUUIDs } from './pages/ConfiguradorUUIDs';
 
 // Páginas autenticadas
-import { DashboardNovo } from './pages/DashboardNovo';
 import { Configuracoes } from './pages/Configuracoes';
 import { OrcamentosNovos } from './pages/OrcamentosNovos';
 import { OrcamentosKanban } from './pages/OrcamentosKanban';
