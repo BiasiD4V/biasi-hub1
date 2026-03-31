@@ -9,6 +9,7 @@ import {
   ClipboardList,
   CheckSquare,
   BarChart2,
+  BarChart3,
   Settings,
   LogOut,
   Hammer,
@@ -54,7 +55,10 @@ const MENU: SecaoMenu[] = [
   },
   {
     titulo: 'Análise',
-    itens: [{ rotulo: 'Relatórios', para: '/relatorios', icone: BarChart2 }],
+    itens: [
+      { rotulo: 'BI Propostas', para: '/bi', icone: BarChart3 },
+      { rotulo: 'Relatórios', para: '/relatorios', icone: BarChart2 },
+    ],
   },
   {
     titulo: 'Sistema',
