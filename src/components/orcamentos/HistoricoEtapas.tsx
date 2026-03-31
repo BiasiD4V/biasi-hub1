@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GitBranch, FileText, Edit2, X, Save, Trash2, Upload } from 'lucide-react';
+import { GitBranch, FileText, Edit2, X, Save, Trash2, Upload, ExternalLink } from 'lucide-react';
 import type { MudancaEtapa } from '../../domain/entities/MudancaEtapa';
 import { ETAPA_LABELS, ETAPA_CORES } from '../../domain/value-objects/EtapaFunil';
 
@@ -189,13 +189,24 @@ export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: 
                 </label>
                 {editForm.arquivo && (
                   <div className="mb-2 flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                    <span className="text-xs text-blue-700">📎 {editForm.arquivo.split('/').pop()}</span>
-                    <button
-                      onClick={() => setEditForm({ ...editForm, arquivo: undefined })}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      <X size={14} />
-                    </button>
+                    <span className="text-xs text-blue-700 truncate">📎 {editForm.arquivo.split('/').pop()}</span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => setFilePreviewOpen(editForm.arquivo!)}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                        title="Abrir arquivo"
+                      >
+                        <ExternalLink size={12} />
+                        Abrir
+                      </button>
+                      <button
+                        onClick={() => setEditForm({ ...editForm, arquivo: undefined })}
+                        className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-100 transition-colors"
+                        title="Remover arquivo"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
                 )}
                 <label className="flex items-center justify-center w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
