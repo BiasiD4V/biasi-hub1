@@ -11,10 +11,12 @@ import { BlocoQualificacao } from '../components/orcamentos/BlocoQualificacao';
 import { HistoricoEtapas } from '../components/orcamentos/HistoricoEtapas';
 import { AlertasOrcamento } from '../components/orcamentos/AlertasOrcamento';
 import { ModalNovoFollowUp } from '../components/orcamentos/ModalNovoFollowUp';
+import { ModalNovaPendencia } from '../components/orcamentos/ModalNovaPendencia';
 
 import { propostasRepository, type PropostaSupabase, type MudancaEtapaRow, type FollowUpRow } from '../infrastructure/supabase/propostasRepository';
 import type { FollowUp } from '../domain/entities/FollowUp';
 import type { MudancaEtapa } from '../domain/entities/MudancaEtapa';
+import type { Pendencia } from '../domain/entities/Pendencia';
 import type { DadosFechamento } from '../components/orcamentos/ModalFechamentoComercial';
 import type { AtualizarQualificacaoInput } from '../context/NovoOrcamentoContext';
 import type { OrcamentoCard } from '../context/NovoOrcamentoContext';
@@ -29,7 +31,7 @@ const ETAPA_DEFAULT: EtapaFunil = 'entrada_oportunidade';
 const RESULTADO_DEFAULT: ResultadoComercial = 'em_andamento';
 
 /* === localStorage helpers para persistência quando tabelas Supabase não existem === */
-function lsKey(propostaId: string, tipo: 'mudancas' | 'followups') {
+function lsKey(propostaId: string, tipo: 'mudancas' | 'followups' | 'pendencias') {
   return `biasi_${tipo}_${propostaId}`;
 }
 function lsGetMudancas(propostaId: string): MudancaEtapa[] {
@@ -43,6 +45,12 @@ function lsGetFollowUps(propostaId: string): FollowUp[] {
 }
 function lsSaveFollowUps(propostaId: string, items: FollowUp[]) {
   try { localStorage.setItem(lsKey(propostaId, 'followups'), JSON.stringify(items)); } catch { /* */ }
+}
+function lsGetPendencias(propostaId: string): Pendencia[] {
+  try { return JSON.parse(localStorage.getItem(lsKey(propostaId, 'pendencias')) || '[]'); } catch { return []; }
+}
+function lsSavePendencias(propostaId: string, items: Pendencia[]) {
+  try { localStorage.setItem(lsKey(propostaId, 'pendencias'), JSON.stringify(items)); } catch { /* */ }
 }
 
 function etapaSegura(v: string | null): EtapaFunil {
@@ -130,6 +138,7 @@ export function OrcamentoDetalhe() {
     atualizarQualificacao,
   } = useNovoOrcamento();
   const [modalFollowUpAberto, setModalFollowUpAberto] = useState(false);
+  const [modalPendenciaAberto, setModalPendenciaAberto] = useState(false);
   const [editandoLink, setEditandoLink] = useState(false);
   const [linkInput, setLinkInput] = useState('');
 
@@ -154,8 +163,10 @@ export function OrcamentoDetalhe() {
         // Se Supabase retornou dados do histórico, usar; senão fallback localStorage
         const m = mudancas.length > 0 ? mudancas.map(rowParaMudanca) : lsGetMudancas(id);
         const f = fups.length > 0 ? fups.map(rowParaFollowUp) : lsGetFollowUps(id);
+        const pends = lsGetPendencias(id); // Pendências são sempre do localStorage
         setLocalMudancas(m);
         setLocalFollowUps(f);
+        setLocalPendencias(pends);
         setCarregando(false);
       }
     }).catch(() => {
@@ -163,6 +174,7 @@ export function OrcamentoDetalhe() {
         // Fallback total: carregar do localStorage
         setLocalMudancas(lsGetMudancas(id));
         setLocalFollowUps(lsGetFollowUps(id));
+        setLocalPendencias(lsGetPendencias(id));
         setCarregando(false);
       }
     });
@@ -175,9 +187,10 @@ export function OrcamentoDetalhe() {
   // Estado local para Supabase (sem tabelas de histórico no banco)
   const [localFollowUps, setLocalFollowUps] = useState<FollowUp[]>([]);
   const [localMudancas, setLocalMudancas] = useState<MudancaEtapa[]>([]);
+  const [localPendencias, setLocalPendencias] = useState<Pendencia[]>([]);
 
   const followUps = isSupa ? localFollowUps : (id ? buscarFollowUps(id) : []);
-  const pendencias = id && !isSupa ? buscarPendencias(id) : [];
+  const pendencias = isSupa ? localPendencias : (id ? buscarPendencias(id) : []);
   const mudancasEtapa = isSupa ? localMudancas : (id ? buscarMudancasEtapa(id) : []);
 
   if (carregando) {
@@ -307,6 +320,24 @@ export function OrcamentoDetalhe() {
           motivoPerda: dados.motivoPerda,
         });
       }
+    }
+  }
+
+  function handleResolverPendencia(pendenciaId: string) {
+    if (isSupa) {
+      // Quando é Supabase, trabalhar com localStorage
+      setLocalPendencias((prev) => {
+        const next = prev.map((p) =>
+          p.id === pendenciaId && p.status === 'aberta'
+            ? { ...p, status: 'resolvida' as const }
+            : p
+        );
+        lsSavePendencias(id!, next);
+        return next;
+      });
+    } else {
+      // Quando é mock, usar o contexto
+      resolverPendencia(pendenciaId);
     }
   }
 
@@ -457,7 +488,8 @@ export function OrcamentoDetalhe() {
             {/* Pendências */}
             <BlocoPendencias
               pendencias={pendencias}
-              onResolver={(pendenciaId) => resolverPendencia(pendenciaId)}
+              onResolver={(pendenciaId) => handleResolverPendencia(pendenciaId)}
+              onAdicionarNova={() => setModalPendenciaAberto(true)}
             />
 
             {/* Bloco Comercial */}
@@ -627,6 +659,28 @@ export function OrcamentoDetalhe() {
               : { ultima_interacao: fu.data.slice(0, 10) };
             propostasRepository.atualizar(id, updateData).then((p) => setPropostaSupa(p)).catch(() => {});
           } : undefined}
+        />
+      )}
+
+      {/* Modal nova pendência */}
+      {id && (
+        <ModalNovaPendencia
+          aberto={modalPendenciaAberto}
+          onFechar={() => setModalPendenciaAberto(false)}
+          orcamentoId={id}
+          onRegistrada={(pend) => {
+            if (isSupa) {
+              // Salvar no state + localStorage imediatamente
+              setLocalPendencias((prev) => {
+                const next = [pend, ...prev];
+                lsSavePendencias(id, next);
+                return next;
+              });
+            } else {
+              // Para mock, apenas recarregar seria necessário, mas como estamos usando o contexto,
+              // o adicionarPendencia será chamado pelo modal
+            }
+          }}
         />
       )}
     </div>

@@ -12,6 +12,7 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -39,7 +40,7 @@ export function Login() {
     e.preventDefault();
     setErro('');
     setCarregando(true);
-    const resultado = await login(email, senha);
+    const resultado = await login(email, senha, rememberMe);
     setCarregando(false);
     if (resultado.sucesso) {
       navigate('/dashboard', { replace: true });
@@ -105,6 +106,19 @@ export function Login() {
                   {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <input
+                type="checkbox"
+                id="remember-me"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="remember-me" className="text-sm text-slate-600 cursor-pointer font-medium">
+                Lembrar de mim neste computador
+              </label>
             </div>
 
             <button

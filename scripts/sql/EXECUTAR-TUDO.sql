@@ -1798,6 +1798,65 @@ INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, c
 INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, cep, telefone, tipo, avaliacao) VALUES ('2037', '3 ESTRELAS TRANSPORTES LTDA', '52.125.071/0001-14', '190440558115', 'PRACA DO LAGO - 300 - LETRA A - JARDIM DO LAGO - Atibaia - SP', 'Atibaia', 'SP', '12947-130', '(11)44112081', 'Forn.', 'Não avaliado');
 INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, cep, telefone, tipo, avaliacao) VALUES ('2038', 'ECOMNOMIZADA LTDA', '37.124.657/0001-70', '407766689110', 'RUA JERONIMO DE ALBUQUERQUE MARANHAO - 82 - SALA  A - JARDIM CARLOS GOMES - Jundiaí - SP', 'Jundiaí', 'SP', '13216-260', '(11)39952890', 'Forn.', 'Não avaliado');
 INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, cep, telefone, tipo, avaliacao) VALUES ('2039', 'REFILATEL DISTRIBUICAO LTDA', '50.695.934/0001-63', '120883901117', 'RUA BELARMINA J. REGO - 193 - VILA SALETE - São Paulo - SP', 'São Paulo', 'SP', '03615-090', '(11)48112575', 'Forn.', 'Não avaliado');
+
+-- =============================================
+-- TABELA DE SESSÕES DE DISPOSITIVOS
+-- Para "Remember Me" com identificação por IP
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS device_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  ip_address TEXT NOT NULL,
+  device_name TEXT,
+  session_token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  last_login_at TIMESTAMPTZ DEFAULT now(),
+  expires_at TIMESTAMPTZ DEFAULT (now() + interval '30 days'),
+  is_active BOOLEAN DEFAULT true,
+  user_agent TEXT,
+  CONSTRAINT device_sessions_user_email_check CHECK (user_id IS NOT NULL AND email IS NOT NULL)
+);
+
+-- Criar índices para melhor performance
+CREATE INDEX IF NOT EXISTS idx_device_sessions_session_token ON device_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_device_sessions_user_id ON device_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_device_sessions_user_email_ip ON device_sessions(user_id, email, ip_address);
+
+-- Habilitar RLS
+ALTER TABLE device_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS para device_sessions
+CREATE POLICY IF NOT EXISTS "Users can view their own device sessions" 
+  ON device_sessions 
+  FOR SELECT 
+  USING (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS "Users can insert their own device sessions" 
+  ON device_sessions 
+  FOR INSERT 
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS "Users can update their own device sessions" 
+  ON device_sessions 
+  FOR UPDATE 
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS "Users can delete their own device sessions" 
+  ON device_sessions 
+  FOR DELETE 
+  USING (user_id = auth.uid());
+
+-- Função para limpar sessões expiradas (executar periodicamente)
+CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM device_sessions 
+  WHERE expires_at < now() OR is_active = false;
+END;
+$$ LANGUAGE plpgsql;
 INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, cep, telefone, tipo, avaliacao) VALUES ('2040', 'FERRAZ VINHEDO CONSTRUCAO LTDA', '27.379.931/0001-07', '714080499116', 'AVENIDA BENEDITO STORANI (JARDIM ALVES NOGUEIRA) - 1.030 - SALA  2 - SANTA ROSA - Vinhedo - SP', 'Vinhedo', 'SP', '13289-004', '(19)98086820', 'Forn.', 'Não avaliado');
 INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, cep, telefone, tipo, avaliacao) VALUES ('2041', 'TARUMA AGROPECUARIA COMERCIAL EIRELI', '57.283.327/0001-35', '114893068112', 'AVENIDA IMPERATRIZ LEOPOLDINA - 1572 - VILA LEOPOLDINA - São Paulo - SP', 'São Paulo', 'SP', '05305-002', '(11)22326770', 'Forn.', 'Não avaliado');
 INSERT INTO fornecedores (codigo_erp, nome, cnpj, ie, endereco, municipio, uf, cep, telefone, tipo, avaliacao) VALUES ('2042', 'AGROPECAS SOUZA INDUSTRIA, COMERCIO, IMPORTACAO E EXPORTACAO LTDA', '35.642.282/0001-05', '121145996111', 'RUA BRASILIO RODRIGUES - 111 - VILA JUNQUEIRA - Santo André - SP', 'Santo André', 'SP', '09172-610', '(11)44575819', 'Forn.', 'Não avaliado');

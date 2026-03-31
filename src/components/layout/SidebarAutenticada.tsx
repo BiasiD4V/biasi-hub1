@@ -13,6 +13,7 @@ import {
   LogOut,
   Hammer,
   ListChecks,
+  Smartphone,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -57,7 +58,10 @@ const MENU: SecaoMenu[] = [
   },
   {
     titulo: 'Sistema',
-    itens: [{ rotulo: 'Configurações', para: '/configuracoes', icone: Settings }],
+    itens: [
+      { rotulo: 'Configurações', para: '/configuracoes', icone: Settings },
+      { rotulo: 'Meus Dispositivos', para: '/meus-dispositivos', icone: Smartphone },
+    ],
   },
 ];
 

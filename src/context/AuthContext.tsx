@@ -2,13 +2,18 @@ import { createContext, useContext, useState, useEffect, useRef, type ReactNode 
 import { supabase } from '../infrastructure/supabase/client';
 import type { Usuario } from '../domain/entities/Usuario';
 import type { PapelUsuario } from '../domain/value-objects/PapelUsuario';
+import { 
+  createDeviceSession, 
+  validateRememberedSession, 
+  clearRememberedSession 
+} from '../infrastructure/services/deviceSessionService';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   usuario: Usuario | null;
   loading: boolean;
   erroConexao: string | null;
-  login: (email: string, senha: string) => Promise<{ sucesso: boolean; erro?: string }>;
+  login: (email: string, senha: string, rememberMe?: boolean) => Promise<{ sucesso: boolean; erro?: string }>;
   logout: () => void;
 }
 
@@ -38,20 +43,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (inicializado.current && _event === 'INITIAL_SESSION') return;
 
           clearTimeout(timeout);
-          inicializado.current = true;
-          setErroConexao(null);
 
           if (_event === 'INITIAL_SESSION') {
             if (session?.user) {
               await loadUserProfile(session.user.id);
             } else {
-              setUsuario(null);
+              // Tentar validar Remember Me antes de liberar para login
+              const remembered = await validateRememberedSession();
+              if (remembered.valid && remembered.userId) {
+                // Auto-login usando Supabase refresh token se disponível
+                const { data: { session: newSession } } = await supabase.auth.refreshSession();
+                if (newSession?.user) {
+                  await loadUserProfile(newSession.user.id);
+                } else {
+                  setUsuario(null);
+                }
+              } else {
+                setUsuario(null);
+              }
             }
             setLoading(false);
+            inicializado.current = true;
+            setErroConexao(null);
           } else if (_event === 'SIGNED_IN') {
             setLoading(false);
+            inicializado.current = true;
+            setErroConexao(null);
           } else if (_event === 'SIGNED_OUT') {
             setUsuario(null);
+            clearRememberedSession();
             setLoading(false);
           }
         }
@@ -103,7 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(
     email: string,
-    senha: string
+    senha: string,
+    rememberMe: boolean = false
   ): Promise<{ sucesso: boolean; erro?: string }> {
     if (!email.trim() || !senha.trim()) {
       return { sucesso: false, erro: 'Preencha e-mail e senha.' };
@@ -128,6 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await supabase.auth.signOut();
           return { sucesso: false, erro: 'Perfil de usuário não encontrado. Contate o administrador.' };
         }
+
+        // Se "Lembrar de mim" está marcado, criar sessão de dispositivo
+        if (rememberMe) {
+          await createDeviceSession(data.user.id, email.trim());
+        }
+
         return { sucesso: true };
       }
 
@@ -141,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut();
       setUsuario(null);
+      clearRememberedSession();
     } catch (error) {
       console.error('Erro no logout:', error);
     }

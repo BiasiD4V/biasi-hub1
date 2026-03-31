@@ -1,9 +1,10 @@
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import type { Pendencia, StatusPendencia } from '../../domain/entities/Pendencia';
 
 interface BlocoPendenciasProps {
   pendencias: Pendencia[];
   onResolver: (id: string) => void;
+  onAdicionarNova?: () => void;
 }
 
 const ESTILO_STATUS: Record<StatusPendencia, string> = {
@@ -22,7 +23,7 @@ function isPrazoVencido(prazo: string, status: StatusPendencia): boolean {
   return status === 'aberta' && new Date(prazo + 'T23:59:59') < new Date();
 }
 
-export function BlocoPendencias({ pendencias, onResolver }: BlocoPendenciasProps) {
+export function BlocoPendencias({ pendencias, onResolver, onAdicionarNova }: BlocoPendenciasProps) {
   const abertas = pendencias.filter((p) => p.status === 'aberta').length;
 
   return (
@@ -30,25 +31,37 @@ export function BlocoPendencias({ pendencias, onResolver }: BlocoPendenciasProps
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <h3 className="text-sm font-semibold text-slate-700">Pendências</h3>
-        {pendencias.length > 0 && (
-          <span
-            className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-              abertas > 0 ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'
-            }`}
-          >
-            {abertas > 0 ? (
-              <>
-                <AlertCircle size={11} />
-                {abertas} aberta{abertas !== 1 ? 's' : ''}
-              </>
-            ) : (
-              <>
-                <CheckCircle size={11} />
-                Tudo resolvido
-              </>
-            )}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {pendencias.length > 0 && (
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+                abertas > 0 ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'
+              }`}
+            >
+              {abertas > 0 ? (
+                <>
+                  <AlertCircle size={11} />
+                  {abertas} aberta{abertas !== 1 ? 's' : ''}
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={11} />
+                  Tudo resolvido
+                </>
+              )}
+            </span>
+          )}
+          {onAdicionarNova && (
+            <button
+              onClick={onAdicionarNova}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors ml-auto"
+              title="Adicionar pendência"
+            >
+              <Plus size={13} />
+              Adicionar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Conteúdo */}

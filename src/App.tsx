@@ -31,6 +31,7 @@ import { Relatorios } from './pages/Relatorios';
 import { Propostas } from './pages/Propostas';
 import { MaoDeObra } from './pages/MaoDeObra';
 import { InclusoExcluso } from './pages/InclusoExcluso';
+import { MeusDispositivos } from './pages/MeusDispositivos';
 
 export function App() {
   return (
@@ -65,6 +66,7 @@ export function App() {
                   <Route path="/aprovacoes" element={<Aprovacoes />} />
                   <Route path="/relatorios" element={<Relatorios />} />
                   <Route path="/operacao/orcamentos" element={<Propostas />} />
+                  <Route path="/meus-dispositivos" element={<MeusDispositivos />} />
                 </Route>
 
                 {/* Fallback */}
