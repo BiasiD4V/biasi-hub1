@@ -32,12 +32,51 @@ export interface FiltrosInsumos {
   fornecedor?: string | null
   unidade?: string | null
   grupo?: string | null
+  semFornecedor?: boolean
   alertaDias?: number | null
   ordenarPor?: 'descricao' | 'custo_atual' | 'dias_sem_atualizar' | 'fornecedor'
   ordem?: 'asc' | 'desc'
 }
 
 const POR_PAGINA = 50
+
+async function listarValoresDistintos(
+  campo: 'fornecedor' | 'unidade' | 'grupo',
+  ignorarNulos = false
+): Promise<string[]> {
+  const PAGE = 1000
+  let page = 0
+  const valores = new Set<string>()
+
+  while (true) {
+    let query = supabase
+      .from('insumos_view')
+      .select(campo)
+      .eq('ativo', true)
+      .order(campo, { ascending: true })
+      .range(page * PAGE, (page + 1) * PAGE - 1)
+
+    if (ignorarNulos) {
+      query = query.not(campo, 'is', null)
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+    if (!data || data.length === 0) break
+
+    for (const row of data as Record<string, string | null>[]) {
+      const valor = row[campo]
+      if (valor) valores.add(valor)
+    }
+
+    if (data.length < PAGE) break
+    page++
+  }
+
+  const unique = [...valores]
+  unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return unique
+}
 
 export const insumosRepository = {
   async listar(
@@ -65,8 +104,13 @@ export const insumosRepository = {
     if (filtros.unidade) {
       query = query.eq('unidade', filtros.unidade)
     }
-    if (filtros.grupo) {
+    if (filtros.grupo === null) {
+      query = query.is('grupo', null)
+    } else if (filtros.grupo) {
       query = query.eq('grupo', filtros.grupo)
+    }
+    if (filtros.semFornecedor) {
+      query = query.is('fornecedor', null)
     }
     if (filtros.alertaDias) {
       query = query.gte('dias_sem_atualizar', filtros.alertaDias)
@@ -150,41 +194,15 @@ export const insumosRepository = {
   },
 
   async listarFornecedores(): Promise<string[]> {
-    const { data, error } = await supabase
-      .from('insumos_view')
-      .select('fornecedor')
-      .eq('ativo', true)
-      .not('fornecedor', 'is', null)
-      .limit(10000)
-    if (error) throw error
-    const unique = [...new Set((data ?? []).map((r) => r.fornecedor as string).filter(Boolean))]
-    unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    return unique
+    return listarValoresDistintos('fornecedor', true)
   },
 
   async listarUnidades(): Promise<string[]> {
-    const { data, error } = await supabase
-      .from('insumos_view')
-      .select('unidade')
-      .eq('ativo', true)
-      .limit(10000)
-    if (error) throw error
-    const unique = [...new Set((data ?? []).map((r) => r.unidade).filter(Boolean))]
-    unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    return unique
+    return listarValoresDistintos('unidade', false)
   },
 
   async listarGrupos(): Promise<string[]> {
-    const { data, error } = await supabase
-      .from('insumos_view')
-      .select('grupo')
-      .eq('ativo', true)
-      .not('grupo', 'is', null)
-      .limit(10000)
-    if (error) throw error
-    const unique = [...new Set((data ?? []).map((r) => r.grupo as string).filter(Boolean))]
-    unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    return unique
+    return listarValoresDistintos('grupo', true)
   },
 
   /**
