@@ -31,7 +31,10 @@ export interface FiltrosInsumos {
   busca?: string
   fornecedor?: string | null
   unidade?: string | null
+  grupo?: string | null
   alertaDias?: number | null
+  ordenarPor?: 'descricao' | 'custo_atual' | 'dias_sem_atualizar' | 'fornecedor'
+  ordem?: 'asc' | 'desc'
 }
 
 const POR_PAGINA = 50
@@ -41,16 +44,19 @@ export const insumosRepository = {
     pagina = 0,
     filtros: FiltrosInsumos = {}
   ): Promise<{ data: Insumo[]; total: number }> {
+    const colOrdem = filtros.ordenarPor ?? 'descricao'
+    const ascOrdem = (filtros.ordem ?? 'asc') === 'asc'
+
     let query = supabase
       .from('insumos_view')
       .select('*', { count: 'exact' })
       .eq('ativo', true)
-      .order('descricao', { ascending: true })
+      .order(colOrdem, { ascending: ascOrdem })
       .range(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA - 1)
 
     if (filtros.busca) {
       query = query.or(
-        `descricao.ilike.%${filtros.busca}%,fornecedor.ilike.%${filtros.busca}%,codigo.ilike.%${filtros.busca}%`
+        `descricao.ilike.%${filtros.busca}%,fornecedor.ilike.%${filtros.busca}%,codigo.ilike.%${filtros.busca}%,grupo.ilike.%${filtros.busca}%`
       )
     }
     if (filtros.fornecedor) {
@@ -58,6 +64,9 @@ export const insumosRepository = {
     }
     if (filtros.unidade) {
       query = query.eq('unidade', filtros.unidade)
+    }
+    if (filtros.grupo) {
+      query = query.eq('grupo', filtros.grupo)
     }
     if (filtros.alertaDias) {
       query = query.gte('dias_sem_atualizar', filtros.alertaDias)
@@ -146,9 +155,10 @@ export const insumosRepository = {
       .select('fornecedor')
       .eq('ativo', true)
       .not('fornecedor', 'is', null)
+      .limit(10000)
     if (error) throw error
-    const unique = [...new Set((data ?? []).map((r) => r.fornecedor as string))]
-    unique.sort()
+    const unique = [...new Set((data ?? []).map((r) => r.fornecedor as string).filter(Boolean))]
+    unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
     return unique
   },
 
@@ -157,9 +167,23 @@ export const insumosRepository = {
       .from('insumos_view')
       .select('unidade')
       .eq('ativo', true)
+      .limit(10000)
     if (error) throw error
-    const unique = [...new Set((data ?? []).map((r) => r.unidade))]
-    unique.sort()
+    const unique = [...new Set((data ?? []).map((r) => r.unidade).filter(Boolean))]
+    unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return unique
+  },
+
+  async listarGrupos(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('insumos_view')
+      .select('grupo')
+      .eq('ativo', true)
+      .not('grupo', 'is', null)
+      .limit(10000)
+    if (error) throw error
+    const unique = [...new Set((data ?? []).map((r) => r.grupo as string).filter(Boolean))]
+    unique.sort((a, b) => a.localeCompare(b, 'pt-BR'))
     return unique
   },
 }
