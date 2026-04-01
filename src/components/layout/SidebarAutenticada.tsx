@@ -14,6 +14,7 @@ import {
   Hammer,
   ListChecks,
   Smartphone,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -49,6 +50,7 @@ const MENU: SecaoMenu[] = [
     titulo: 'Operação',
     itens: [
       { rotulo: 'Orçamentos', para: '/orcamentos', icone: ClipboardList },
+      { rotulo: 'Planilhas Orç.', para: '/planilha-orcamentaria', icone: FileSpreadsheet },
       { rotulo: 'Aprovações', para: '/aprovacoes', icone: CheckSquare },
     ],
   },
