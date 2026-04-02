@@ -151,8 +151,41 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const gravacaoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const callWindowRef = useRef<Window | null>(null);
+  const callPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { canalAtivoRef.current = canalAtivo; }, [canalAtivo]);
+
+  // Monitor Jitsi call window — when host closes it, mark call as ended
+  function monitorarChamada(msgId: string) {
+    if (callPollRef.current) clearInterval(callPollRef.current);
+    callPollRef.current = setInterval(() => {
+      if (callWindowRef.current && callWindowRef.current.closed) {
+        clearInterval(callPollRef.current!);
+        callPollRef.current = null;
+        callWindowRef.current = null;
+        // Calculate duration
+        supabase.from('chat_mensagens').select('criado_em').eq('id', msgId).single().then(({ data }) => {
+          const duracao = data?.criado_em ? calcDuracao(data.criado_em) : '';
+          const textoFim = duracao ? `Chamada encerrada · ${duracao}` : 'Chamada encerrada';
+          supabase.from('chat_mensagens').update({
+            arquivo_tipo: 'link/call-ended',
+            arquivo_nome: textoFim,
+            arquivo_url: null,
+          }).eq('id', msgId).then();
+        });
+      }
+    }, 2000);
+  }
+
+  function calcDuracao(inicio: string): string {
+    const diff = Date.now() - new Date(inicio).getTime();
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}min`;
+    return `${Math.floor(m / 60)}h ${m % 60}min`;
+  }
 
   // Typing broadcast channel
   useEffect(() => {
@@ -641,15 +674,17 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
       supabase.from('chat_mensagens').insert({
         remetente_id: usuario.id,
         remetente_nome: usuario.nome,
-        conteudo: `📞 ${usuario.nome} iniciou uma chamada de voz (anfitrião) — `,
+        conteudo: `📞 ${usuario.nome} iniciou uma chamada de voz`,
         canal: canalAtivo === 'geral' ? 'geral' : 'dm',
         arquivo_url: participantUrl,
         arquivo_nome: 'Entrar na chamada',
         arquivo_tipo: 'link/call',
         ...(dmAtivo ? { destinatario_id: dmAtivo.id } : {}),
-      }).then();
+      }).select('id').single().then(({ data }) => {
+        if (data?.id) monitorarChamada(data.id);
+      });
     }
-    window.open(hostUrl, '_blank');
+    callWindowRef.current = window.open(hostUrl, '_blank');
   }
 
   function iniciarVideoCall() {
@@ -663,15 +698,17 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
       supabase.from('chat_mensagens').insert({
         remetente_id: usuario.id,
         remetente_nome: usuario.nome,
-        conteudo: `📹 ${usuario.nome} iniciou uma videochamada (anfitrião) — `,
+        conteudo: `📹 ${usuario.nome} iniciou uma videochamada`,
         canal: canalAtivo === 'geral' ? 'geral' : 'dm',
         arquivo_url: participantUrl,
         arquivo_nome: 'Entrar na chamada',
         arquivo_tipo: 'link/call',
         ...(dmAtivo ? { destinatario_id: dmAtivo.id } : {}),
-      }).then();
+      }).select('id').single().then(({ data }) => {
+        if (data?.id) monitorarChamada(data.id);
+      });
     }
-    window.open(hostUrl, '_blank');
+    callWindowRef.current = window.open(hostUrl, '_blank');
   }
 
   function voltarParaLista() {
@@ -986,11 +1023,18 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
                                     href={msg.arquivo_url!}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+                                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'}`}
                                   >
-                                    {msg.conteudo?.includes('vídeo') ? <Video size={12} /> : <Phone size={12} />}
-                                    {msg.arquivo_nome}
+                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                    {msg.conteudo?.includes('vídeo') || msg.conteudo?.includes('videochamada') ? <Video size={12} /> : <Phone size={12} />}
+                                    Entrar na chamada
                                   </a>
+                                ) : msg.arquivo_tipo === 'link/call-ended'
+                                ? (
+                                  <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg ${isMine ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                    {msg.conteudo?.includes('vídeo') || msg.conteudo?.includes('videochamada') ? <Video size={12} /> : <Phone size={12} />}
+                                    {msg.arquivo_nome || 'Chamada encerrada'}
+                                  </div>
                                 ) : (
                                   <a
                                     href={msg.arquivo_url}

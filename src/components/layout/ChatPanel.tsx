@@ -69,6 +69,8 @@ export function ChatPanel({ aberto, onFechar, onUnreadChange }: ChatPanelProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const callWindowRef = useRef<Window | null>(null);
+  const callPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -120,6 +122,14 @@ export function ChatPanel({ aberto, onFechar, onUnreadChange }: ChatPanelProps) 
             });
           }
         }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chat_mensagens',
+      }, (payload) => {
+        const updated = payload.new as Mensagem;
+        setMensagens((prev) => prev.map((m) => m.id === updated.id ? { ...m, ...updated } : m));
       })
       .subscribe();
 
@@ -260,6 +270,28 @@ export function ChatPanel({ aberto, onFechar, onUnreadChange }: ChatPanelProps) 
     setUploadingFile(false);
   }
 
+  // Monitor Jitsi window — when host closes, mark call ended
+  function monitorarChamada(msgId: string) {
+    if (callPollRef.current) clearInterval(callPollRef.current);
+    callPollRef.current = setInterval(() => {
+      if (callWindowRef.current && callWindowRef.current.closed) {
+        clearInterval(callPollRef.current!);
+        callPollRef.current = null;
+        callWindowRef.current = null;
+        supabase.from('chat_mensagens').select('criado_em').eq('id', msgId).single().then(({ data }) => {
+          const diff = data?.criado_em ? Date.now() - new Date(data.criado_em).getTime() : 0;
+          const s = Math.floor(diff / 1000);
+          const durTxt = s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}min` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}min`;
+          supabase.from('chat_mensagens').update({
+            arquivo_tipo: 'link/call-ended',
+            arquivo_nome: `Chamada encerrada · ${durTxt}`,
+            arquivo_url: null,
+          }).eq('id', msgId).then();
+        });
+      }
+    }, 2000);
+  }
+
   // Video call (opens Jitsi Meet room)
   function iniciarVideoCall() {
     const room = `biasi-hub-${Date.now()}`;
@@ -270,13 +302,15 @@ export function ChatPanel({ aberto, onFechar, onUnreadChange }: ChatPanelProps) 
       supabase.from('chat_mensagens').insert({
         usuario_id: usuario.id,
         usuario_nome: usuario.nome,
-        conteudo: `📹 ${usuario.nome} iniciou uma videochamada — `,
+        conteudo: `📹 ${usuario.nome} iniciou uma videochamada`,
         tipo: 'sistema',
         arquivo_url: participantUrl,
         arquivo_tipo: 'link/call',
-      }).then();
+      }).select('id').single().then(({ data }) => {
+        if (data?.id) monitorarChamada(data.id);
+      });
     }
-    window.open(hostUrl, '_blank');
+    callWindowRef.current = window.open(hostUrl, '_blank');
   }
 
   function iniciarVoiceCall() {
@@ -288,13 +322,15 @@ export function ChatPanel({ aberto, onFechar, onUnreadChange }: ChatPanelProps) 
       supabase.from('chat_mensagens').insert({
         usuario_id: usuario.id,
         usuario_nome: usuario.nome,
-        conteudo: `📞 ${usuario.nome} iniciou uma chamada de voz — `,
+        conteudo: `📞 ${usuario.nome} iniciou uma chamada de voz`,
         tipo: 'sistema',
         arquivo_url: participantUrl,
         arquivo_tipo: 'link/call',
-      }).then();
+      }).select('id').single().then(({ data }) => {
+        if (data?.id) monitorarChamada(data.id);
+      });
     }
-    window.open(hostUrl, '_blank');
+    callWindowRef.current = window.open(hostUrl, '_blank');
   }
 
   // Group by date
@@ -369,21 +405,38 @@ export function ChatPanel({ aberto, onFechar, onUnreadChange }: ChatPanelProps) 
               const isSistema = m.tipo === 'sistema';
 
               if (isSistema) {
+                const isCallActive = m.arquivo_tipo === 'link/call';
+                const isCallEnded = m.arquivo_tipo === 'link/call-ended';
+                const isCall = isCallActive || isCallEnded;
+                const isVideo = m.conteudo?.includes('vídeo') || m.conteudo?.includes('videochamada');
                 return (
                   <div key={m.id} className="flex justify-center my-2">
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 text-xs text-blue-700 max-w-[85%] text-center">
-                      {m.conteudo}
-                      {m.arquivo_url && (
-                        <a
-                          href={m.arquivo_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block mt-1 underline font-medium"
-                        >
-                          Entrar na chamada
-                        </a>
-                      )}
-                    </div>
+                    {isCall ? (
+                      <div className={`rounded-xl px-4 py-3 max-w-[85%] text-center border ${isCallActive ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`flex items-center justify-center gap-2 text-xs font-medium ${isCallActive ? 'text-green-700' : 'text-slate-500'}`}>
+                          {isCallActive && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
+                          {isVideo ? <Video size={14} /> : <Phone size={14} />}
+                          <span>{m.conteudo}</span>
+                        </div>
+                        {isCallActive && m.arquivo_url ? (
+                          <a
+                            href={m.arquivo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 mt-2 px-4 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors"
+                          >
+                            {isVideo ? <Video size={12} /> : <Phone size={12} />}
+                            Entrar na chamada
+                          </a>
+                        ) : isCallEnded ? (
+                          <p className="text-[10px] text-slate-400 mt-1">{m.arquivo_nome || 'Chamada encerrada'}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 text-xs text-blue-700 max-w-[85%] text-center">
+                        {m.conteudo}
+                      </div>
+                    )}
                   </div>
                 );
               }
