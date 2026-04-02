@@ -106,7 +106,7 @@ export function Membros() {
     if (isGestor) {
       const targetInfo = getPapelInfo(target.papel);
       if (targetInfo.nivel <= 2) return false;
-      return target.departamento === (usuario as any).departamento;
+      return target.departamento === usuario?.departamento;
     }
     return false;
   }

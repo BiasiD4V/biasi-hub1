@@ -6,4 +6,5 @@ export interface Usuario {
   email: string;
   papel: PapelUsuario;
   ativo: boolean;
+  departamento: string | null;
 }

@@ -111,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: data.email,
           papel: data.papel as PapelUsuario,
           ativo: data.ativo,
+          departamento: data.departamento || null,
         });
         return true;
       }
