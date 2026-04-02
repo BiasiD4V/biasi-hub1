@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MessageCircle, X, Sparkles, GripVertical, Send, EyeOff } from 'lucide-react';
+import { X, Sparkles, Send } from 'lucide-react';
 import { supabase } from '../../infrastructure/supabase/client';
 
 interface DicaPagina {
@@ -144,9 +144,6 @@ const DICAS: Record<string, DicaPagina> = {
   },
 };
 
-const STORAGE_KEY_POS = 'paulo-ajuda-pos-v2';
-const STORAGE_KEY_HIDDEN = 'paulo-ajuda-hidden-v1';
-
 function getDicasPorRota(pathname: string): DicaPagina {
   if (DICAS[pathname]) return DICAS[pathname];
 
@@ -166,9 +163,6 @@ function getDicasPorRota(pathname: string): DicaPagina {
   };
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
 
 function normalizarTexto(texto: string): string {
   return texto
@@ -324,12 +318,6 @@ interface PauloAjudaProps {
 
 export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
   const [aberto, setAberto] = useState(false);
-  const [oculto, setOculto] = useState(false);
-  const [animando, setAnimando] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [pronto, setPronto] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(900);
   const [mensagens, setMensagens] = useState<MensagemPaulo[]>([]);
   const [entrada, setEntrada] = useState('');
   const [carregandoResposta, setCarregandoResposta] = useState(false);
@@ -338,8 +326,6 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
   const location = useLocation();
   const panelRef = useRef<HTMLDivElement>(null);
   const mensagensFimRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef({ offsetX: 0, offsetY: 0, startX: 0, startY: 0, moved: false });
-  const bloquearClickRef = useRef(false);
 
   const dicas = useMemo(() => getDicasPorRota(location.pathname), [location.pathname]);
 
@@ -347,7 +333,6 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
   useEffect(() => {
     if (forceOpen) {
       setAberto(true);
-      setOculto(false);
     }
   }, [forceOpen]);
 
@@ -356,57 +341,6 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
     setAberto(false);
     onClose?.();
   };
-
-  useEffect(() => {
-    const onResize = () => setViewportHeight(window.innerHeight);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  useEffect(() => {
-    const padrao = {
-      x: Math.max(10, window.innerWidth - 230),
-      y: Math.max(10, window.innerHeight - 84),
-    };
-
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_POS);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { x?: number; y?: number };
-        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          setPos({ x: parsed.x, y: parsed.y });
-          setPronto(true);
-          return;
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
-
-    setPos(padrao);
-    setPronto(true);
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_HIDDEN);
-      if (raw === '1') {
-        setOculto(true);
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!pronto) return;
-    localStorage.setItem(STORAGE_KEY_POS, JSON.stringify(pos));
-  }, [pos, pronto]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_HIDDEN, oculto ? '1' : '0');
-  }, [oculto]);
 
   useEffect(() => {
     const nextDicas = getDicasPorRota(location.pathname);
@@ -418,84 +352,6 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
     if (!aberto) return;
     mensagensFimRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensagens, carregandoResposta, aberto]);
-
-  useEffect(() => {
-    if (!aberto) return;
-
-    function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setAberto(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [aberto]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setAnimando(true);
-      setTimeout(() => setAnimando(false), 1000);
-    }, 8000);
-    return () => clearInterval(timer);
-  }, []);
-
-  function iniciarArrasto(e: React.PointerEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    dragRef.current = {
-      offsetX: e.clientX - pos.x,
-      offsetY: e.clientY - pos.y,
-      startX: e.clientX,
-      startY: e.clientY,
-      moved: false,
-    };
-    setDragging(true);
-
-    const onMove = (ev: PointerEvent) => {
-      const dx = Math.abs(ev.clientX - dragRef.current.startX);
-      const dy = Math.abs(ev.clientY - dragRef.current.startY);
-      if (dx + dy > 4) dragRef.current.moved = true;
-
-      const larguraBase = aberto ? 56 : 220;
-      const alturaBase = 56;
-      const nextX = clamp(ev.clientX - dragRef.current.offsetX, 8, window.innerWidth - larguraBase - 8);
-      const nextY = clamp(ev.clientY - dragRef.current.offsetY, 8, window.innerHeight - alturaBase - 8);
-      setPos({ x: nextX, y: nextY });
-    };
-
-    const onUp = () => {
-      if (dragRef.current.moved) {
-        bloquearClickRef.current = true;
-        setTimeout(() => {
-          bloquearClickRef.current = false;
-        }, 50);
-      }
-
-      setDragging(false);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-  }
-
-  function toggleAjuda() {
-    if (bloquearClickRef.current) return;
-    setAberto((prev) => !prev);
-  }
-
-  function ocultarAjuda() {
-    setAberto(false);
-    setOculto(true);
-  }
-
-  function mostrarAjuda() {
-    setOculto(false);
-    setAberto(true);
-  }
 
   async function enviarPergunta(textoPergunta: string) {
     const pergunta = textoPergunta.trim();
@@ -568,192 +424,102 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
     }
   }
 
-  const abreParaCima = pos.y > viewportHeight * 0.55;
-  const painelPosicao = abreParaCima ? 'bottom-[calc(100%+10px)]' : 'top-[calc(100%+10px)]';
-  const alinhamento = pos.x < 140 ? 'left-0' : 'right-0';
-
-  if (!pronto) return null;
-
-  if (oculto) {
-    return (
-      <button
-        onClick={mostrarAjuda}
-        className="fixed z-[9999] bottom-4 right-4 sm:bottom-6 sm:right-6 rounded-full bg-slate-900 text-white px-4 py-2.5 shadow-lg hover:bg-slate-800 transition-colors flex items-center gap-2"
-        title="Mostrar Paulo Ajuda"
-      >
-        <MessageCircle size={16} />
-        <span className="text-sm font-semibold">Mostrar Paulo</span>
-      </button>
-    );
-  }
+  if (!aberto) return null;
 
   return (
-    <>
-      <div
-        ref={panelRef}
-        className="fixed z-[9999]"
-        style={{ left: pos.x, top: pos.y }}
-      >
-        {aberto && (
-          <div
-            className={`absolute ${painelPosicao} ${alinhamento} w-[calc(100vw-24px)] sm:w-[390px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden`}
-            style={{ animation: 'slideUpPaulo 0.25s ease-out' }}
-          >
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 flex items-center gap-3">
-              <div className="bg-white/20 rounded-full p-2">
-                <Sparkles size={18} className="text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-white font-bold text-sm">Paulo AJUDA</h3>
-                <p className="text-blue-100 text-xs">{dicas.titulo} - {dicas.descricao}</p>
-              </div>
-              <button
-                onClick={() => fechar()}
-                className="text-white/70 hover:text-white transition-colors p-1"
-                title="Fechar"
-              >
-                <X size={18} />
-              </button>
-            </div>
+    <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 h-[100dvh] sm:h-[580px] bg-white sm:rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 flex items-center gap-3">
+        <div className="bg-white/20 rounded-full p-2">
+          <Sparkles size={18} className="text-white" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-white font-bold text-sm">Paulo AJUDA</h3>
+          <p className="text-blue-100 text-xs">{dicas.titulo} - {dicas.descricao}</p>
+        </div>
+        <button
+          onClick={fechar}
+          className="text-white/70 hover:text-white transition-colors p-1"
+          title="Fechar"
+        >
+          <X size={18} />
+        </button>
+      </div>
 
-            <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 space-y-2">
-              <div className="flex items-start gap-2">
-                <div className="bg-blue-100 rounded-full p-1 mt-0.5 shrink-0">
-                  <Sparkles size={12} className="text-blue-600" />
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Conversa normal comigo. Eu respondo com contexto da tela.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {sugestoes.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => enviarPergunta(s)}
-                    className="text-[11px] px-2 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-              {mensagens.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div
-                    className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}
-                    style={msg.role === 'assistant' ? { animation: 'fadeInPaulo 0.18s ease-out' } : undefined}
-                  >
-                    {msg.texto}
-                  </div>
-                </div>
-              ))}
-
-              {carregandoResposta && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl px-3.5 py-2.5 text-sm bg-slate-100 text-slate-500 border border-slate-200">
-                    Deixa eu pensar rapidinho...
-                  </div>
-                </div>
-              )}
-              <div ref={mensagensFimRef} />
-            </div>
-
-            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  value={entrada}
-                  onChange={(e) => setEntrada(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void enviarPergunta(entrada);
-                    }
-                  }}
-                  placeholder="Pergunte ao Paulo..."
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30"
-                  disabled={carregandoResposta}
-                />
-                <button
-                  onClick={() => void enviarPergunta(entrada)}
-                  disabled={carregandoResposta || !entrada.trim()}
-                  className="h-9 w-9 rounded-lg bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700"
-                  title="Enviar"
-                >
-                  <Send size={16} className="mx-auto" />
-                </button>
-              </div>
-
-              <p className="text-[10px] text-slate-400 text-center">
-                Dica: arraste pelo icone lateral para mover este assistente na tela.
-              </p>
-
-              <div className="flex justify-center">
-                <button
-                  onClick={ocultarAjuda}
-                  className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700"
-                  title="Ocultar Paulo Ajuda"
-                >
-                  <EyeOff size={12} />
-                  Ocultar assistente
-                </button>
-              </div>
-            </div>
+      {/* Sugestões */}
+      <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 space-y-2">
+        <div className="flex items-start gap-2">
+          <div className="bg-blue-100 rounded-full p-1 mt-0.5 shrink-0">
+            <Sparkles size={12} className="text-blue-600" />
           </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <button
-            onPointerDown={iniciarArrasto}
-            className={`h-10 w-10 rounded-full border transition-colors shadow-md ${
-              dragging
-                ? 'bg-slate-700 border-slate-700 text-white'
-                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-            }`}
-            title="Arrastar Paulo Ajuda"
-          >
-            <GripVertical size={16} className="mx-auto" />
-          </button>
-
-          <button
-            data-paulo-btn="true"
-            onClick={toggleAjuda}
-            className={`group flex items-center gap-2 rounded-full shadow-lg transition-all duration-300 ${
-              aberto
-                ? 'bg-slate-700 hover:bg-slate-800 px-4 py-3'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-5 py-3.5'
-            } ${animando && !aberto ? 'scale-110' : 'scale-100'}`}
-            title="Abrir Paulo Ajuda"
-          >
-            {aberto ? (
-              <X size={20} className="text-white" />
-            ) : (
-              <>
-                <MessageCircle size={20} className="text-white" />
-                <span className="text-white text-sm font-bold tracking-wide">Paulo AJUDA</span>
-                <Sparkles size={14} className="text-yellow-300" />
-              </>
-            )}
-          </button>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Conversa normal comigo. Eu respondo com contexto da tela.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {sugestoes.map((s) => (
+            <button
+              key={s}
+              onClick={() => enviarPergunta(s)}
+              className="text-[11px] px-2 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+            >
+              {s}
+            </button>
+          ))}
         </div>
       </div>
 
-      <style>{`
-        @keyframes slideUpPaulo {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeInPaulo {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </>
+      {/* Mensagens */}
+      <div ref={panelRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {mensagens.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+              }`}
+            >
+              {msg.texto}
+            </div>
+          </div>
+        ))}
+        {carregandoResposta && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl px-3.5 py-2.5 text-sm bg-slate-100 text-slate-500 border border-slate-200">
+              Deixa eu pensar rapidinho...
+            </div>
+          </div>
+        )}
+        <div ref={mensagensFimRef} />
+      </div>
+
+      {/* Input */}
+      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
+        <div className="flex items-center gap-2">
+          <input
+            value={entrada}
+            onChange={(e) => setEntrada(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void enviarPergunta(entrada);
+              }
+            }}
+            placeholder="Pergunte ao Paulo..."
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30"
+            disabled={carregandoResposta}
+          />
+          <button
+            onClick={() => void enviarPergunta(entrada)}
+            disabled={carregandoResposta || !entrada.trim()}
+            className="h-9 w-9 rounded-lg bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700"
+            title="Enviar"
+          >
+            <Send size={16} className="mx-auto" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   FileText,
   ClipboardList,
   CheckSquare,
-  BarChart2,
   Settings,
   LogOut,
   Hammer,
@@ -61,7 +60,6 @@ const MENU: SecaoMenu[] = [
     titulo: 'Gestão',
     itens: [
       { rotulo: 'Bira', para: '/bira', icone: KanbanSquare },
-      { rotulo: 'Relatórios', para: '/relatorios', icone: BarChart2 },
     ],
   },
   {
