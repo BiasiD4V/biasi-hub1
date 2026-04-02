@@ -1045,7 +1045,15 @@ export function Bira() {
   const [sortField, setSortField] = useState<keyof JiraIssue>('created');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => { load(); }, []);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    load();
+    // Auto-polling: busca Jira a cada 45s
+    const interval = setInterval(() => { silentLoad(); }, 45_000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -1054,8 +1062,22 @@ export function Bira() {
       const res = await fetch('/api/jira');
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || `Erro ${res.status}`); setLoading(false); return; }
       setIssues(await res.json());
+      setLastSync(new Date());
     } catch { setError('Erro de conexão'); }
     setLoading(false);
+  }
+
+  // Silent background refresh (no loading spinner)
+  async function silentLoad() {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/jira');
+      if (res.ok) {
+        setIssues(await res.json());
+        setLastSync(new Date());
+      }
+    } catch {}
+    setSyncing(false);
   }
 
   async function openPanel(issue: JiraIssue) {
@@ -1175,8 +1197,14 @@ export function Bira() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 text-xs text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-              <RefreshCw size={13} /> Atualizar
+            {lastSync && (
+              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                {syncing && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
+                Sync {lastSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button onClick={load} className={`flex items-center gap-1.5 px-3 py-2 text-xs text-slate-500 hover:bg-slate-100 rounded-lg transition-colors ${syncing ? 'animate-pulse' : ''}`}>
+              <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} /> Atualizar
             </button>
             <button
               onClick={() => setShowCreate(true)}
