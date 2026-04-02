@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { DollarSign, Calendar, Activity, CheckCircle, XCircle } from 'lucide-react';
 import type { OrcamentoCard } from '../../context/NovoOrcamentoContext';
 import type { EtapaFunil } from '../../domain/value-objects/EtapaFunil';
 import { ETAPA_LABELS, ETAPA_CORES, ORDEM_FUNIL } from '../../domain/value-objects/EtapaFunil';
@@ -37,12 +37,18 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
   const corEtapa = ETAPA_CORES[orc.etapaFunil];
   const corResultado = RESULTADO_CORES[orc.resultadoComercial];
   const fechado = orc.resultadoComercial !== 'em_andamento';
+  const primeiraVez = mudancasEtapa.length === 0;
 
   function handleMudarEtapa(e: React.ChangeEvent<HTMLSelectElement>) {
     const etapaNova = e.target.value as EtapaFunil;
     if (etapaNova !== orc.etapaFunil) {
-      setEtapaSelecionada(etapaNova);
-      setModalConfirmacao(true);
+      if (primeiraVez) {
+        // Primeira vez: muda direto sem modal
+        onMudarEtapa(etapaNova);
+      } else {
+        setEtapaSelecionada(etapaNova);
+        setModalConfirmacao(true);
+      }
     }
   }
 
@@ -89,41 +95,36 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
         </h3>
 
         <div className="space-y-4">
-          {/* Resultado comercial */}
-          <div>
-            <p className="text-xs text-slate-400 mb-1.5">Resultado</p>
-            {fechado ? (
-              <div
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${corResultado.bg}`}
-              >
-                {orc.resultadoComercial === 'ganho' ? (
-                  <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
-                ) : (
-                  <XCircle size={18} className="text-red-500 flex-shrink-0" />
-                )}
+          {/* Resultado comercial — destaque quando fechado */}
+          {fechado ? (
+            <div
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${corResultado.bg}`}
+            >
+              {orc.resultadoComercial === 'ganho' ? (
+                <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
+              ) : (
+                <XCircle size={18} className="text-red-500 flex-shrink-0" />
+              )}
+              <div>
+                <p className="text-xs text-slate-500">Resultado</p>
                 <p className={`text-sm font-bold ${corResultado.text}`}>
                   {RESULTADO_LABELS[orc.resultadoComercial]}
                 </p>
               </div>
-            ) : (
-              <select
-                value={orc.resultadoComercial}
-                onChange={(e) => {
-                  const val = e.target.value as 'em_andamento' | 'ganho' | 'perdido';
-                  if (val !== 'em_andamento') {
-                    abrirFechamento(val);
-                    // Reset select back to em_andamento since modal will handle the change
-                    e.target.value = 'em_andamento';
-                  }
-                }}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
-              >
-                <option value="em_andamento">Em andamento</option>
-                <option value="ganho">Ganho</option>
-                <option value="perdido">Perdido</option>
-              </select>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Activity size={14} className="text-blue-500 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-slate-400">Resultado</p>
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${corResultado.bg} ${corResultado.text}`}
+                >
+                  {RESULTADO_LABELS[orc.resultadoComercial]}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Etapa do funil — somente leitura quando fechado */}
           <div>
@@ -217,6 +218,25 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
             </div>
           )}
 
+          {/* Botões de fechamento — somente quando em andamento */}
+          {!fechado && (
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <button
+                onClick={() => abrirFechamento('ganho')}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm"
+              >
+                <CheckCircle size={15} />
+                Marcar como Ganho
+              </button>
+              <button
+                onClick={() => abrirFechamento('perdido')}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg transition-colors"
+              >
+                <XCircle size={15} />
+                Marcar como Perdido
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
