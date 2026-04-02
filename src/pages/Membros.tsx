@@ -41,7 +41,7 @@ const ROTULO_PAPEL: Record<string, string> = {
   usuario: 'Usuário',
 };
 
-function formatarData(iso: string): string {
+function _formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'short',

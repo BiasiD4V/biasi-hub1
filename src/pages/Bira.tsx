@@ -562,7 +562,7 @@ export function Bira() {
     }
   }
 
-  function handleCommentAdded(key: string, comment: JiraComment) {
+  function handleCommentAdded(_key: string, comment: JiraComment) {
     setPanelDetail(prev => prev ? { ...prev, comments: [...prev.comments, comment] } : prev);
   }
 
