@@ -72,8 +72,17 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
 
 async function rdoFetch<T>(path: string, params?: Record<string, string>): Promise<T> {
   const qs = new URLSearchParams({ path, ...params }).toString();
-  const res = await fetch(`${API_BASE}/api/rdo?${qs}`);
-  if (!res.ok) throw new Error(`Erro ${res.status}`);
+  const url = `${API_BASE}/api/rdo?${qs}`;
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (e: unknown) {
+    throw new Error(`Falha de conexão: ${(e as Error).message}`);
+  }
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`Erro ${res.status}: ${txt.slice(0, 120)}`);
+  }
   return res.json();
 }
 
@@ -121,13 +130,16 @@ export function DiarioDeObra() {
   const [fotoExpandida, setFotoExpandida] = useState<string | null>(null);
 
   // Load obras
-  useEffect(() => {
+  function carregarObras() {
     setLoading(true);
+    setErro(null);
     rdoFetch<ObraRDO[]>('obras')
       .then(setObras)
       .catch((e) => setErro(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { carregarObras(); }, []);
 
   // Load relatorios when obra selected
   useEffect(() => {
@@ -174,7 +186,13 @@ export function DiarioDeObra() {
         <div className="text-center">
           <AlertCircle size={32} className="text-red-400 mx-auto mb-2" />
           <p className="text-sm text-slate-700 font-semibold">Erro ao carregar</p>
-          <p className="text-xs text-slate-500">{erro}</p>
+          <p className="text-xs text-slate-500 mb-3 max-w-md">{erro}</p>
+          <button
+            onClick={carregarObras}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+          >
+            Tentar novamente
+          </button>
         </div>
       </div>
     );
