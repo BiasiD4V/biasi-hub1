@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { X, Send, Hash, ArrowLeft, Paperclip, CornerUpLeft, CheckCheck, Mic, Square, Phone, Video } from 'lucide-react';
+import { X, Send, Hash, ArrowLeft, Paperclip, CornerUpLeft, CheckCheck, Mic, Square, Phone, Video, Search, MessageCircle, Users } from 'lucide-react';
 import { supabase } from '../infrastructure/supabase/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,6 +32,50 @@ interface ChatMembrosProps {
   onFechar: () => void;
 }
 
+const AVATAR_COLORS = [
+  'from-blue-500 to-blue-600',
+  'from-emerald-500 to-emerald-600',
+  'from-violet-500 to-violet-600',
+  'from-amber-500 to-amber-600',
+  'from-rose-500 to-rose-600',
+  'from-cyan-500 to-cyan-600',
+  'from-fuchsia-500 to-fuchsia-600',
+  'from-orange-500 to-orange-600',
+];
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function formatDateSeparator(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return 'Hoje';
+  if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function shouldShowDateSeparator(msgs: Mensagem[], idx: number): boolean {
+  if (idx === 0) return true;
+  const curr = new Date(msgs[idx].criado_em).toDateString();
+  const prev = new Date(msgs[idx - 1].criado_em).toDateString();
+  return curr !== prev;
+}
+
+function isConsecutive(msgs: Mensagem[], idx: number): boolean {
+  if (idx === 0) return false;
+  const prev = msgs[idx - 1];
+  const curr = msgs[idx];
+  if (prev.remetente_id !== curr.remetente_id) return false;
+  const diff = new Date(curr.criado_em).getTime() - new Date(prev.criado_em).getTime();
+  return diff < 120000; // 2 min
+}
+
 export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
   const { usuario } = useAuth();
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -47,6 +91,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
   const [gravando, setGravando] = useState(false);
   const [duracaoGravacao, setDuracaoGravacao] = useState(0);
+  const [buscaMembro, setBuscaMembro] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -380,185 +425,281 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
   if (!aberto) return null;
 
   const outrosMembros = membros.filter(m => m.id !== usuario?.id);
+  const membrosFiltrados = buscaMembro
+    ? outrosMembros.filter(m => m.nome.toLowerCase().includes(buscaMembro.toLowerCase()))
+    : outrosMembros;
   const ultimaMinhaMensagemId = [...mensagens].reverse().find(m => m.remetente_id === usuario?.id)?.id;
+  const onlineCount = outrosMembros.filter(m => m.esta_online).length;
 
   return (
-    <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 h-[100dvh] sm:h-[580px] bg-white sm:rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
+    <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[620px] bg-white sm:rounded-2xl shadow-[0_8px_60px_rgba(0,0,0,0.18)] border border-slate-200/60 flex flex-col overflow-hidden backdrop-blur-sm">
+      {/* ═══════ Header ═══════ */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-5 py-3.5 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
           {!mostrarLista && (
-            <button onClick={voltarParaLista} className="p-1 rounded hover:bg-slate-700 mr-1">
+            <button onClick={voltarParaLista} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors mr-0.5">
               <ArrowLeft size={16} />
             </button>
           )}
-          <span className="font-semibold text-sm">
-            {mostrarLista
-              ? 'Chat da Equipe'
-              : dmAtivo
-                ? dmAtivo.nome
-                : '# Geral'}
-          </span>
-          {dmAtivo && (
-            <span className={`w-2 h-2 rounded-full ${dmAtivo.esta_online ? 'bg-green-400' : 'bg-slate-500'}`} />
+          {mostrarLista ? (
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white/10 p-1.5 rounded-lg">
+                <MessageCircle size={16} />
+              </div>
+              <div>
+                <span className="font-semibold text-sm block leading-tight">Chat da Equipe</span>
+                <span className="text-[10px] text-slate-400">{onlineCount} online agora</span>
+              </div>
+            </div>
+          ) : dmAtivo ? (
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <div className={`bg-gradient-to-br ${getAvatarColor(dmAtivo.nome)} rounded-full w-8 h-8 flex items-center justify-center shadow-sm`}>
+                  <span className="text-white text-xs font-bold">{dmAtivo.nome.charAt(0).toUpperCase()}</span>
+                </div>
+                <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${dmAtivo.esta_online ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+              </div>
+              <div>
+                <span className="font-semibold text-sm block leading-tight">{dmAtivo.nome}</span>
+                <span className="text-[10px] text-slate-400">{dmAtivo.esta_online ? 'Online' : 'Offline'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white/10 p-1.5 rounded-lg">
+                <Hash size={16} />
+              </div>
+              <div>
+                <span className="font-semibold text-sm block leading-tight">Geral</span>
+                <span className="text-[10px] text-slate-400">Canal da equipe</span>
+              </div>
+            </div>
           )}
         </div>
-        {!mostrarLista && (
-          <div className="flex items-center gap-0.5">
-            <button onClick={iniciarLigacao} className="p-1.5 rounded hover:bg-slate-700" title="Chamada de voz">
-              <Phone size={14} />
-            </button>
-            <button onClick={iniciarVideoCall} className="p-1.5 rounded hover:bg-slate-700" title="Videochamada">
-              <Video size={14} />
-            </button>
-          </div>
-        )}
-        <button onClick={onFechar} className="p-1 rounded hover:bg-slate-700">
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {!mostrarLista && (
+            <>
+              <button onClick={iniciarLigacao} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Chamada de voz">
+                <Phone size={14} />
+              </button>
+              <button onClick={iniciarVideoCall} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Videochamada">
+                <Video size={14} />
+              </button>
+            </>
+          )}
+          <button onClick={onFechar} className="p-2 rounded-lg hover:bg-white/10 transition-colors ml-1">
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       {mostrarLista ? (
         <div className="flex-1 overflow-y-auto">
+          {/* ═══════ Search ═══════ */}
+          <div className="p-3 pb-0">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={buscaMembro}
+                onChange={e => setBuscaMembro(e.target.value)}
+                placeholder="Buscar conversa..."
+                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300 transition-all placeholder:text-slate-400"
+              />
+            </div>
+          </div>
+
+          {/* ═══════ Channels ═══════ */}
           <div className="p-3">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Canais</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-1 flex items-center gap-1.5">
+              <Hash size={10} className="text-slate-300" />
+              Canais
+            </p>
             <button
               onClick={() => abrirCanal('geral')}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 active:bg-slate-100 transition-all text-left group"
             >
-              <Hash size={16} className="text-slate-400" />
-              <span className="text-sm font-medium text-slate-700">Geral</span>
+              <div className="bg-slate-100 group-hover:bg-blue-100 rounded-lg p-2 transition-colors">
+                <Hash size={14} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-slate-700">Geral</span>
+                <p className="text-[10px] text-slate-400 truncate">Canal aberto para toda a equipe</p>
+              </div>
             </button>
           </div>
 
-          <div className="p-3 pt-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Mensagens Diretas</p>
+          {/* ═══════ Direct Messages ═══════ */}
+          <div className="px-3 pb-3">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-1 flex items-center gap-1.5">
+              <Users size={10} className="text-slate-300" />
+              Mensagens Diretas
+            </p>
             <div className="space-y-0.5">
-              {outrosMembros.map(m => (
+              {membrosFiltrados.map(m => (
                 <button
                   key={m.id}
                   onClick={() => abrirDM(m)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 active:bg-slate-100 transition-all text-left group"
                 >
                   <div className="relative flex-shrink-0">
-                    <div className="bg-blue-600 rounded-full w-8 h-8 flex items-center justify-center">
+                    <div className={`bg-gradient-to-br ${getAvatarColor(m.nome)} rounded-full w-9 h-9 flex items-center justify-center shadow-sm`}>
                       <span className="text-white text-xs font-bold">{m.nome.charAt(0).toUpperCase()}</span>
                     </div>
-                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${m.esta_online ? 'bg-green-500' : 'bg-slate-300'}`} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${m.esta_online ? 'bg-emerald-400' : 'bg-slate-300'}`} />
                   </div>
                   <div className="min-w-0 flex-1 flex items-center justify-between">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-700 truncate">{m.nome}</p>
-                      <p className="text-[10px] text-slate-400">{m.esta_online ? 'Online' : 'Offline'}</p>
+                      <p className={`text-[10px] ${m.esta_online ? 'text-emerald-500 font-medium' : 'text-slate-400'}`}>
+                        {m.esta_online ? 'Online' : 'Offline'}
+                      </p>
                     </div>
                     {naoLidasPorConta.has(m.id) && (
-                      <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 ml-2" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 ml-2 animate-pulse shadow-sm shadow-blue-500/50" />
                     )}
                   </div>
                 </button>
               ))}
+              {membrosFiltrados.length === 0 && outrosMembros.length > 0 && (
+                <p className="text-xs text-slate-400 px-3 py-4 text-center">Nenhum resultado para &ldquo;{buscaMembro}&rdquo;</p>
+              )}
               {outrosMembros.length === 0 && (
-                <p className="text-xs text-slate-400 px-3 py-2">Nenhum membro disponível</p>
+                <div className="text-center py-6 px-3">
+                  <Users size={24} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-xs text-slate-400">Nenhum membro disponível</p>
+                </div>
               )}
             </div>
           </div>
         </div>
       ) : (
         <>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          {/* ═══════ Messages Area ═══════ */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-0.5 bg-gradient-to-b from-slate-50/50 to-white">
             {carregando ? (
-              <div className="text-center text-slate-400 text-sm py-8">Carregando...</div>
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                <p className="text-sm text-slate-400">Carregando mensagens...</p>
+              </div>
             ) : mensagens.length === 0 ? (
-              <div className="text-center text-slate-400 text-sm py-8">
-                Nenhuma mensagem ainda. Seja o primeiro!
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <div className="bg-slate-100 rounded-full p-4">
+                  <MessageCircle size={28} className="text-slate-300" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-500">Nenhuma mensagem ainda</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Envie a primeira mensagem!</p>
+                </div>
               </div>
             ) : (
-              mensagens.map(msg => {
+              mensagens.map((msg, idx) => {
                 const isMine = msg.remetente_id === usuario?.id;
+                const consecutive = isConsecutive(mensagens, idx);
+                const showDate = shouldShowDateSeparator(mensagens, idx);
                 return (
-                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] ${isMine ? 'order-2' : ''}`}>
-                      {!isMine && (
-                        <p className="text-[10px] font-medium text-slate-500 mb-0.5 ml-1">{msg.remetente_nome}</p>
-                      )}
-                      <div className={`px-3 py-2 rounded-2xl text-sm ${
-                        isMine
-                          ? 'bg-blue-600 text-white rounded-br-md'
-                          : 'bg-slate-100 text-slate-800 rounded-bl-md'
-                      }`}>
-                        {/* Reply preview */}
-                        {msg.resposta_conteudo && (
-                          <div className={`text-[10px] mb-1.5 px-2 py-1 rounded-lg border-l-2 ${
-                            isMine
-                              ? 'bg-blue-500/50 border-blue-300 text-blue-100'
-                              : 'bg-slate-200 border-slate-400 text-slate-600'
-                          }`}>
-                            <p className="font-bold truncate">{msg.resposta_remetente_nome}</p>
-                            <p className="truncate">{msg.resposta_conteudo}</p>
-                          </div>
-                        )}
-                        {/* File attachment */}
-                        {msg.arquivo_url && (
-                          msg.arquivo_tipo?.startsWith('image/')
-                            ? (
-                              <img
-                                src={msg.arquivo_url}
-                                alt={msg.arquivo_nome ?? 'imagem'}
-                                className="max-w-full rounded-lg mb-1 max-h-48 object-cover cursor-pointer"
-                                onClick={() => window.open(msg.arquivo_url!, '_blank')}
-                              />
-                            ) : msg.arquivo_tipo?.startsWith('audio/')
-                            ? (
-                              <audio
-                                src={msg.arquivo_url}
-                                controls
-                                className="max-w-full rounded-lg"
-                                style={{ height: '36px', minWidth: '180px' }}
-                              />
-                            ) : msg.arquivo_tipo === 'link/call'
-                            ? (
-                              <a
-                                href={msg.arquivo_url!}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
-                              >
-                                {msg.conteudo?.includes('vídeo') ? <Video size={12} /> : <Phone size={12} />}
-                                {msg.arquivo_nome}
-                              </a>
-                            ) : (
-                              <a
-                                href={msg.arquivo_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`flex items-center gap-1.5 text-xs underline ${isMine ? 'text-blue-200' : 'text-blue-600'}`}
-                              >
-                                <Paperclip size={11} />
-                                {msg.arquivo_nome}
-                              </a>
-                            )
-                        )}
-                        {/* Text content */}
-                        {msg.conteudo && <span>{msg.conteudo}</span>}
+                  <div key={msg.id}>
+                    {/* Date separator */}
+                    {showDate && (
+                      <div className="flex items-center gap-3 py-3">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="text-[10px] font-medium text-slate-400 bg-white px-2">
+                          {formatDateSeparator(msg.criado_em)}
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200" />
                       </div>
-                      {/* Time row */}
-                      <div className={`flex items-center gap-1 mt-0.5 ${isMine ? 'justify-end mr-1' : 'ml-1'}`}>
-                        <button
-                          onClick={() => setRespostaParaMsg(msg)}
-                          className="p-0.5 text-slate-300 hover:text-blue-500 transition-colors"
-                          title="Responder"
-                        >
-                          <CornerUpLeft size={10} />
-                        </button>
-                        <p className="text-[10px] text-slate-400">
-                          {new Date(msg.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                        {isMine && dmAtivo && msg.id === ultimaMinhaMensagemId && msg.lido && (
-                          <>
-                            <CheckCheck size={11} className="text-blue-400" />
-                            <span className="text-[9px] text-blue-400">Visualizado</span>
-                          </>
+                    )}
+                    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${consecutive ? 'mt-0.5' : 'mt-3'} group`}>
+                      {/* Avatar for other users (only shown when not consecutive) */}
+                      {!isMine && !consecutive && (
+                        <div className={`bg-gradient-to-br ${getAvatarColor(msg.remetente_nome)} rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0 mr-2 mt-5 shadow-sm`}>
+                          <span className="text-white text-[10px] font-bold">{msg.remetente_nome.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                      {!isMine && consecutive && <div className="w-7 mr-2 flex-shrink-0" />}
+                      <div className={`max-w-[75%] ${isMine ? 'order-2' : ''}`}>
+                        {!isMine && !consecutive && (
+                          <p className="text-[10px] font-semibold text-slate-500 mb-1 ml-1">{msg.remetente_nome}</p>
                         )}
+                        <div className={`px-3.5 py-2 text-[13px] leading-relaxed shadow-sm ${
+                          isMine
+                            ? `bg-gradient-to-br from-blue-600 to-blue-700 text-white ${consecutive ? 'rounded-2xl rounded-tr-md' : 'rounded-2xl rounded-br-md'}`
+                            : `bg-white text-slate-800 border border-slate-100 ${consecutive ? 'rounded-2xl rounded-tl-md' : 'rounded-2xl rounded-bl-md'}`
+                        }`}>
+                          {/* Reply preview */}
+                          {msg.resposta_conteudo && (
+                            <div className={`text-[10px] mb-2 px-2.5 py-1.5 rounded-lg border-l-2 ${
+                              isMine
+                                ? 'bg-blue-500/30 border-blue-300 text-blue-100'
+                                : 'bg-slate-50 border-slate-300 text-slate-500'
+                            }`}>
+                              <p className="font-bold truncate">{msg.resposta_remetente_nome}</p>
+                              <p className="truncate opacity-80">{msg.resposta_conteudo}</p>
+                            </div>
+                          )}
+                          {/* File attachment */}
+                          {msg.arquivo_url && (
+                            msg.arquivo_tipo?.startsWith('image/')
+                              ? (
+                                <img
+                                  src={msg.arquivo_url}
+                                  alt={msg.arquivo_nome ?? 'imagem'}
+                                  className="max-w-full rounded-lg mb-1.5 max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(msg.arquivo_url!, '_blank')}
+                                />
+                              ) : msg.arquivo_tipo?.startsWith('audio/')
+                              ? (
+                                <audio
+                                  src={msg.arquivo_url}
+                                  controls
+                                  className="max-w-full rounded-lg"
+                                  style={{ height: '36px', minWidth: '180px' }}
+                                />
+                              ) : msg.arquivo_tipo === 'link/call'
+                              ? (
+                                <a
+                                  href={msg.arquivo_url!}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+                                >
+                                  {msg.conteudo?.includes('vídeo') ? <Video size={12} /> : <Phone size={12} />}
+                                  {msg.arquivo_nome}
+                                </a>
+                              ) : (
+                                <a
+                                  href={msg.arquivo_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-1.5 text-xs ${isMine ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700'} transition-colors`}
+                                >
+                                  <Paperclip size={11} />
+                                  <span className="underline underline-offset-2">{msg.arquivo_nome}</span>
+                                </a>
+                              )
+                          )}
+                          {/* Text content */}
+                          {msg.conteudo && <span>{msg.conteudo}</span>}
+                        </div>
+                        {/* Time + actions row */}
+                        <div className={`flex items-center gap-1.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isMine ? 'justify-end mr-1' : 'ml-1'}`}>
+                          <button
+                            onClick={() => setRespostaParaMsg(msg)}
+                            className="p-0.5 text-slate-300 hover:text-blue-500 transition-colors"
+                            title="Responder"
+                          >
+                            <CornerUpLeft size={10} />
+                          </button>
+                          <p className="text-[10px] text-slate-400">
+                            {new Date(msg.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {isMine && dmAtivo && msg.id === ultimaMinhaMensagemId && msg.lido && (
+                            <>
+                              <CheckCheck size={11} className="text-blue-400" />
+                              <span className="text-[9px] text-blue-400 font-medium">Lido</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -567,22 +708,26 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
             )}
             {/* Typing indicator */}
             {quemDigitando && (
-              <div className="flex items-center gap-1.5 px-1 py-1">
-                <span className="text-xs text-slate-500 italic">{quemDigitando} está digitando</span>
-                <span className="flex gap-0.5 items-end">
-                  <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </span>
+              <div className="flex items-center gap-2 px-1 py-2 mt-2">
+                <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-md px-3.5 py-2 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium">{quemDigitando}</span>
+                    <span className="flex gap-0.5 items-center">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Input */}
-          <div className="border-t border-slate-200 p-3 flex-shrink-0">
+          {/* ═══════ Input Area ═══════ */}
+          <div className="border-t border-slate-100 p-3 bg-white flex-shrink-0">
             {/* Reply preview bar */}
             {respostaParaMsg && (
-              <div className="flex items-center justify-between bg-blue-50 border-l-2 border-blue-500 px-2 py-1.5 rounded-lg mb-2 gap-2">
+              <div className="flex items-center justify-between bg-blue-50/80 border-l-[3px] border-blue-500 px-3 py-2 rounded-lg mb-2 gap-2">
                 <div className="min-w-0 flex items-center gap-2">
                   <CornerUpLeft size={12} className="text-blue-500 flex-shrink-0" />
                   <div className="min-w-0">
@@ -592,7 +737,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setRespostaParaMsg(null)} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
+                <button onClick={() => setRespostaParaMsg(null)} className="text-slate-400 hover:text-slate-600 flex-shrink-0 p-0.5 rounded hover:bg-slate-200/50 transition-colors">
                   <X size={12} />
                 </button>
               </div>
@@ -602,23 +747,23 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={cancelarGravacao}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0"
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors flex-shrink-0"
                   title="Cancelar"
                 >
                   <X size={16} />
                 </button>
-                <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-red-50 border border-red-200 rounded-xl">
+                <div className="flex items-center gap-2 flex-1 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl">
                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-                  <span className="text-sm text-red-600 font-medium">
+                  <span className="text-sm text-red-600 font-medium tabular-nums">
                     {Math.floor(duracaoGravacao / 60).toString().padStart(2, '0')}:{(duracaoGravacao % 60).toString().padStart(2, '0')}
                   </span>
                 </div>
                 <button
                   onClick={pararGravacao}
-                  className="p-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors flex-shrink-0"
+                  className="p-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors flex-shrink-0 shadow-sm shadow-red-500/25"
                   title="Enviar áudio"
                 >
-                  <Square size={16} fill="white" />
+                  <Square size={14} fill="white" />
                 </button>
               </div>
             ) : (
@@ -626,7 +771,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={enviandoArquivo}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-40 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0"
+                  className="p-2 text-slate-400 hover:text-slate-600 disabled:opacity-40 rounded-xl hover:bg-slate-100 transition-colors flex-shrink-0"
                   title="Anexar arquivo"
                 >
                   <Paperclip size={16} />
@@ -645,28 +790,28 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
                   value={texto}
                   onChange={e => handleTextoChange(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } }}
-                  placeholder={dmAtivo ? `Mensagem para ${dmAtivo.nome}...` : 'Mensagem no canal geral...'}
-                  className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={dmAtivo ? `Mensagem para ${dmAtivo.nome}...` : 'Mensagem no # geral...'}
+                  className="flex-1 px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300 focus:bg-white transition-all placeholder:text-slate-400"
                 />
                 {texto.trim() ? (
                   <button
                     onClick={enviarMensagem}
                     disabled={enviandoArquivo}
-                    className="p-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-blue-500/25 hover:shadow-md hover:shadow-blue-500/30 active:scale-95"
                   >
                     {enviandoArquivo
                       ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      : <Send size={16} />
+                      : <Send size={14} />
                     }
                   </button>
                 ) : (
                   <button
                     onClick={iniciarGravacao}
                     disabled={enviandoArquivo}
-                    className="p-2 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-40 transition-colors"
+                    className="p-2.5 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-40 transition-all active:scale-95"
                     title="Gravar áudio"
                   >
-                    <Mic size={16} />
+                    <Mic size={14} />
                   </button>
                 )}
               </div>

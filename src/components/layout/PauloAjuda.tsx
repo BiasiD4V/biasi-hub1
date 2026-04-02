@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { X, Sparkles, Send } from 'lucide-react';
+import { X, Sparkles, Send, Bot } from 'lucide-react';
 import { supabase } from '../../infrastructure/supabase/client';
 
 interface DicaPagina {
@@ -427,33 +427,37 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
   if (!aberto) return null;
 
   return (
-    <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 h-[100dvh] sm:h-[580px] bg-white sm:rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 flex items-center gap-3">
-        <div className="bg-white/20 rounded-full p-2">
-          <Sparkles size={18} className="text-white" />
+    <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[620px] bg-white sm:rounded-2xl shadow-[0_8px_60px_rgba(0,0,0,0.18)] border border-slate-200/60 flex flex-col overflow-hidden">
+      {/* ═══════ Header ═══════ */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-5 py-4 flex items-center gap-3 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvc3ZnPg==')] opacity-50" />
+        <div className="bg-white/15 rounded-xl p-2.5 backdrop-blur-sm relative">
+          <Bot size={18} className="text-white" />
         </div>
-        <div className="flex-1">
-          <h3 className="text-white font-bold text-sm">Paulo AJUDA</h3>
-          <p className="text-blue-100 text-xs">{dicas.titulo} - {dicas.descricao}</p>
+        <div className="flex-1 relative">
+          <h3 className="text-white font-bold text-sm flex items-center gap-1.5">
+            Paulo
+            <span className="text-[9px] font-medium bg-white/20 px-1.5 py-0.5 rounded-full">IA</span>
+          </h3>
+          <p className="text-blue-100/80 text-[11px] truncate">{dicas.titulo}</p>
         </div>
         <button
           onClick={fechar}
-          className="text-white/70 hover:text-white transition-colors p-1"
+          className="text-white/60 hover:text-white hover:bg-white/10 transition-all p-1.5 rounded-lg relative"
           title="Fechar"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
-      {/* Sugestões */}
-      <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 space-y-2">
-        <div className="flex items-start gap-2">
+      {/* ═══════ Suggestions ═══════ */}
+      <div className="px-4 py-3 bg-gradient-to-b from-slate-50 to-white border-b border-slate-100">
+        <div className="flex items-start gap-2 mb-2.5">
           <div className="bg-blue-100 rounded-full p-1 mt-0.5 shrink-0">
-            <Sparkles size={12} className="text-blue-600" />
+            <Sparkles size={10} className="text-blue-600" />
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Conversa normal comigo. Eu respondo com contexto da tela.
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Pergunte sobre <span className="font-medium text-slate-700">{dicas.titulo}</span> ou escolha uma sugestão:
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -461,7 +465,7 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
             <button
               key={s}
               onClick={() => enviarPergunta(s)}
-              className="text-[11px] px-2 py-1 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+              className="text-[11px] px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all shadow-sm"
             >
               {s}
             </button>
@@ -469,33 +473,45 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
         </div>
       </div>
 
-      {/* Mensagens */}
+      {/* ═══════ Messages ═══════ */}
       <div ref={panelRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {mensagens.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'assistant' && (
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 shadow-sm">
+                <Bot size={12} className="text-white" />
+              </div>
+            )}
             <div
-              className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                  ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-sm'
+                  : 'bg-white text-slate-700 border border-slate-100 shadow-sm'
               }`}
             >
-              {msg.texto}
+              <span className="whitespace-pre-wrap">{msg.texto}</span>
             </div>
           </div>
         ))}
         {carregandoResposta && (
           <div className="flex justify-start">
-            <div className="rounded-2xl px-3.5 py-2.5 text-sm bg-slate-100 text-slate-500 border border-slate-200">
-              Deixa eu pensar rapidinho...
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 shadow-sm">
+              <Bot size={12} className="text-white" />
+            </div>
+            <div className="rounded-2xl px-3.5 py-3 bg-white border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
             </div>
           </div>
         )}
         <div ref={mensagensFimRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
+      {/* ═══════ Input ═══════ */}
+      <div className="px-4 py-3 border-t border-slate-100 bg-white">
         <div className="flex items-center gap-2">
           <input
             value={entrada}
@@ -507,16 +523,16 @@ export function PauloAjuda({ forceOpen, onClose }: PauloAjudaProps = {}) {
               }
             }}
             placeholder="Pergunte ao Paulo..."
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30"
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300 focus:bg-white transition-all placeholder:text-slate-400"
             disabled={carregandoResposta}
           />
           <button
             onClick={() => void enviarPergunta(entrada)}
             disabled={carregandoResposta || !entrada.trim()}
-            className="h-9 w-9 rounded-lg bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700"
+            className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-md hover:shadow-blue-500/25 transition-all active:scale-95 flex items-center justify-center"
             title="Enviar"
           >
-            <Send size={16} className="mx-auto" />
+            <Send size={14} />
           </button>
         </div>
       </div>
