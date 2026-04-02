@@ -132,6 +132,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
   const [carregando, setCarregando] = useState(false);
   const [mostrarLista, setMostrarLista] = useState(true);
   const [naoLidasPorConta, setNaoLidasPorConta] = useState<Set<string>>(new Set());
+  const [geralNaoLida, setGeralNaoLida] = useState(false);
   const [respostaParaMsg, setRespostaParaMsg] = useState<Mensagem | null>(null);
   const [quemDigitando, setQuemDigitando] = useState<string | null>(null);
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
@@ -382,6 +383,9 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
           }
           if (nova.canal === 'dm' && nova.destinatario_id === usuario.id && nova.remetente_id !== usuario.id) {
             setNaoLidasPorConta(prev => new Set(prev).add(nova.remetente_id));
+          }
+          if (nova.canal === 'geral' && nova.remetente_id !== usuario.id && canalAtivo !== 'geral') {
+            setGeralNaoLida(true);
           }
         }
       )
@@ -649,6 +653,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
     setDmAtivo(null);
     setMostrarLista(false);
     setRespostaParaMsg(null);
+    setGeralNaoLida(false);
   }
 
   function abrirDM(membro: Membro) {
@@ -853,6 +858,9 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
                 <span className="text-sm font-medium text-slate-700">Geral</span>
                 <p className="text-[10px] text-slate-400 truncate">Canal aberto para toda a equipe</p>
               </div>
+              {geralNaoLida && (
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 ml-2 animate-pulse shadow-sm shadow-blue-500/50" />
+              )}
             </button>
           </div>
 

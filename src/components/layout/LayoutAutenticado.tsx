@@ -17,7 +17,7 @@ export function LayoutAutenticado() {
   const [pauloAberto, setPauloAberto] = useState(false);
   const [chatAberto, setChatAberto] = useState(false);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
-  const [toastNotif, setToastNotif] = useState<{ nome: string; conteudo: string } | null>(null);
+  const [toastNotif, setToastNotif] = useState<{ nome: string; conteudo: string; canal?: string } | null>(null);
   const [callNotif, setCallNotif] = useState<{ nome: string; url: string; tipo: 'voz' | 'video' } | null>(null);
   const chatAbertoRef = useRef(chatAberto);
   const ultimoCountRef = useRef(0);
@@ -185,13 +185,14 @@ export function LayoutAutenticado() {
               tocarSomNotificacao();
               const preview = nova.conteudo?.trim() || nova.arquivo_nome || '📎 arquivo';
               if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-              setToastNotif({ nome: nova.remetente_nome, conteudo: preview });
+              setToastNotif({ nome: nova.remetente_nome, conteudo: preview, canal: nova.canal });
               toastTimeoutRef.current = setTimeout(() => setToastNotif(null), 4000);
 
               // Browser push notification when tab is not focused
               if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
                 try {
-                  const n = new Notification(`${nova.remetente_nome}`, {
+                  const notifTitle = ehMensagemGeral ? `#Geral · ${nova.remetente_nome}` : nova.remetente_nome;
+                  const n = new Notification(notifTitle, {
                     body: preview.length > 60 ? preview.slice(0, 60) + '...' : preview,
                     icon: '/logo-biasi.png',
                     tag: 'biasi-chat-' + nova.remetente_id,
@@ -414,7 +415,7 @@ export function LayoutAutenticado() {
             <span className="text-xs font-bold">{toastNotif.nome.charAt(0).toUpperCase()}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold leading-tight truncate">{toastNotif.nome}</p>
+            <p className="text-xs font-semibold leading-tight truncate">{toastNotif.canal === 'geral' ? `#Geral · ${toastNotif.nome}` : toastNotif.nome}</p>
             <p className="text-[11px] text-slate-300 leading-tight truncate mt-0.5">{toastNotif.conteudo}</p>
           </div>
           <button
