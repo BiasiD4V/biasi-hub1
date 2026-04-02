@@ -5,7 +5,7 @@ import { PauloAjuda } from './PauloAjuda';
 import { ChatMembros } from '../ChatMembros';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../infrastructure/supabase/client';
-import { ChevronsLeft, ChevronsRight, Menu, X } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, Menu, X, Phone, Video, PhoneOff } from 'lucide-react';
 
 const STORAGE_KEY_SIDEBAR_HIDDEN = 'layout-sidebar-hidden-v1';
 
@@ -17,9 +17,12 @@ export function LayoutAutenticado() {
   const [chatAberto, setChatAberto] = useState(false);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const [toastNotif, setToastNotif] = useState<{ nome: string; conteudo: string } | null>(null);
+  const [callNotif, setCallNotif] = useState<{ nome: string; url: string; tipo: 'voz' | 'video' } | null>(null);
   const chatAbertoRef = useRef(chatAberto);
   const ultimoCountRef = useRef(0);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ringtoneRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     chatAbertoRef.current = chatAberto;
@@ -36,37 +39,97 @@ export function LayoutAutenticado() {
     ultimoCountRef.current = mensagensNaoLidas;
   }, [mensagensNaoLidas]);
 
+  // WhatsApp-style whistle notification
   function tocarSomNotificacao() {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const agora = audioContext.currentTime;
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const t = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
 
-      const osc1 = audioContext.createOscillator();
-      const osc2 = audioContext.createOscillator();
-      const gain = audioContext.createGain();
+      // Nota 1 — sweep up
+      const o1 = ctx.createOscillator();
+      o1.type = 'sine';
+      o1.frequency.setValueAtTime(560, t);
+      o1.frequency.exponentialRampToValueAtTime(880, t + 0.12);
+      o1.connect(gain);
+      o1.start(t);
+      o1.stop(t + 0.12);
 
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(audioContext.destination);
+      // Nota 2 — higher   
+      const o2 = ctx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(880, t + 0.15);
+      o2.frequency.exponentialRampToValueAtTime(1175, t + 0.30);
+      o2.connect(gain);
+      o2.start(t + 0.15);
+      o2.stop(t + 0.30);
 
-      osc1.frequency.setValueAtTime(800, agora);
-      osc1.frequency.exponentialRampToValueAtTime(1000, agora + 0.1);
-      osc1.type = 'sine';
-
-      osc2.frequency.setValueAtTime(1200, agora + 0.05);
-      osc2.frequency.exponentialRampToValueAtTime(1400, agora + 0.15);
-      osc2.type = 'sine';
-
-      gain.gain.setValueAtTime(0.4, agora);
-      gain.gain.exponentialRampToValueAtTime(0.1, agora + 0.2);
-
-      osc1.start(agora);
-      osc1.stop(agora + 0.1);
-      osc2.start(agora + 0.05);
-      osc2.stop(agora + 0.15);
+      // Envelope
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.03);
+      gain.gain.setValueAtTime(0.35, t + 0.10);
+      gain.gain.linearRampToValueAtTime(0, t + 0.13);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.18);
+      gain.gain.setValueAtTime(0.35, t + 0.27);
+      gain.gain.linearRampToValueAtTime(0, t + 0.32);
     } catch {
       // silently fail
     }
+  }
+
+  // Ringtone for incoming calls (loops until stopped)
+  function tocarRingtone(): { stop: () => void } {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      let stopped = false;
+      let timeouts: ReturnType<typeof setTimeout>[] = [];
+
+      function ring(offset: number) {
+        if (stopped) return;
+        const t = ctx.currentTime;
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+
+        // Ring tone — two-tone pattern like a phone
+        const freqs = [440, 480];
+        freqs.forEach(f => {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, t);
+          osc.connect(gain);
+          osc.start(t);
+          osc.stop(t + 0.8);
+        });
+
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.setValueAtTime(0.25, t + 0.75);
+        gain.gain.linearRampToValueAtTime(0, t + 0.8);
+
+        // Repeat every 2s
+        const tid = setTimeout(() => ring(offset + 2000), 2000);
+        timeouts.push(tid);
+      }
+
+      ring(0);
+
+      return {
+        stop: () => {
+          stopped = true;
+          timeouts.forEach(clearTimeout);
+          ctx.close().catch(() => {});
+        }
+      };
+    } catch {
+      return { stop: () => {} };
+    }
+  }
+
+  function fecharCallNotif() {
+    setCallNotif(null);
+    ringtoneRef.current?.stop();
+    ringtoneRef.current = null;
+    if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
   }
 
   useEffect(() => {
@@ -93,13 +156,30 @@ export function LayoutAutenticado() {
           const ehDmParaMim = nova.canal === 'dm' && nova.destinatario_id === usuario.id;
 
           if (ehMensagemGeral || ehDmParaMim) {
-            if (!chatAbertoRef.current) {
-              setMensagensNaoLidas((prev) => Math.min(prev + 1, 99));
+            // Check if it's a call
+            const ehChamada = (nova as any).arquivo_tipo === 'link/call';
+
+            if (ehChamada && ehDmParaMim) {
+              const ehVideo = nova.conteudo?.includes('vídeo') || nova.conteudo?.includes('videochamada');
+              setCallNotif({
+                nome: nova.remetente_nome,
+                url: (nova as any).arquivo_url,
+                tipo: ehVideo ? 'video' : 'voz',
+              });
+              ringtoneRef.current?.stop();
+              ringtoneRef.current = tocarRingtone();
+              if (callTimeoutRef.current) clearTimeout(callTimeoutRef.current);
+              callTimeoutRef.current = setTimeout(() => fecharCallNotif(), 30000);
+            } else {
+              if (!chatAbertoRef.current) {
+                setMensagensNaoLidas((prev) => Math.min(prev + 1, 99));
+              }
+              tocarSomNotificacao();
+              const preview = nova.conteudo?.trim() || nova.arquivo_nome || '📎 arquivo';
+              if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+              setToastNotif({ nome: nova.remetente_nome, conteudo: preview });
+              toastTimeoutRef.current = setTimeout(() => setToastNotif(null), 4000);
             }
-            const preview = nova.conteudo?.trim() || nova.arquivo_nome || '📎 arquivo';
-            if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-            setToastNotif({ nome: nova.remetente_nome, conteudo: preview });
-            toastTimeoutRef.current = setTimeout(() => setToastNotif(null), 4000);
           }
         }
       )
@@ -108,6 +188,8 @@ export function LayoutAutenticado() {
     return () => {
       supabase.removeChannel(channel);
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      if (callTimeoutRef.current) clearTimeout(callTimeoutRef.current);
+      ringtoneRef.current?.stop();
     };
   }, [usuario?.id]);
 
@@ -323,10 +405,53 @@ export function LayoutAutenticado() {
         </div>
       )}
 
+      {/* Incoming call notification */}
+      {callNotif && (
+        <div
+          className="fixed inset-x-0 top-0 z-[300] flex justify-center"
+          style={{ animation: 'slideDownCall 0.3s ease-out' }}
+        >
+          <div className="mx-4 mt-4 sm:mx-auto sm:max-w-sm w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 text-center">
+              <div className="relative mx-auto w-16 h-16 mb-3">
+                <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />
+                <div className="relative bg-gradient-to-br from-blue-500 to-blue-700 rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
+                  <span className="text-white text-xl font-bold">{callNotif.nome.charAt(0).toUpperCase()}</span>
+                </div>
+              </div>
+              <p className="font-semibold text-base">{callNotif.nome}</p>
+              <p className="text-sm text-slate-400 mt-0.5">
+                {callNotif.tipo === 'video' ? '📹 Videochamada recebida' : '📞 Chamada de voz recebida'}
+              </p>
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button
+                onClick={() => fecharCallNotif()}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium text-sm"
+              >
+                <PhoneOff size={16} />
+                Recusar
+              </button>
+              <button
+                onClick={() => { window.open(callNotif.url, '_blank'); fecharCallNotif(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-medium text-sm shadow-lg shadow-emerald-500/30"
+              >
+                {callNotif.tipo === 'video' ? <Video size={16} /> : <Phone size={16} />}
+                Atender
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes slideInRight {
           from { transform: translateX(110%); opacity: 0; }
           to   { transform: translateX(0);    opacity: 1; }
+        }
+        @keyframes slideDownCall {
+          from { transform: translateY(-100%); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
     </div>
