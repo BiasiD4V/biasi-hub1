@@ -6,12 +6,16 @@ import { ETAPA_LABELS, ETAPA_CORES, ORDEM_FUNIL } from '../../domain/value-objec
 import { RESULTADO_LABELS, RESULTADO_CORES } from '../../domain/value-objects/ResultadoComercial';
 import { ModalFechamentoComercial, type DadosFechamento } from './ModalFechamentoComercial';
 import { ModalConfirmarMudancaEtapa } from './ModalConfirmarMudancaEtapa';
+import type { MudancaEtapa } from '../../domain/entities/MudancaEtapa';
+import type { PapelUsuario } from '../../domain/value-objects/PapelUsuario';
 
 interface BlocoComercialProps {
   orc: OrcamentoCard;
-  onMudarEtapa: (etapaNova: EtapaFunil, observacao?: string) => void;
+  onMudarEtapa: (etapaNova: EtapaFunil, observacao?: string, arquivoUrl?: string) => void;
   onAtualizarValor: (valor: number) => void;
   onFechamento: (dados: DadosFechamento) => void;
+  mudancasEtapa?: MudancaEtapa[];
+  papelUsuario?: PapelUsuario;
 }
 
 function formatarData(dateStr?: string): string {
@@ -24,7 +28,7 @@ function formatarValor(valor?: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamento }: BlocoComercialProps) {
+export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamento, mudancasEtapa = [], papelUsuario }: BlocoComercialProps) {
   const [modalFechamento, setModalFechamento] = useState(false);
   const [tipoFechamento, setTipoFechamento] = useState<'ganho' | 'perdido'>('ganho');
   const [modalConfirmacao, setModalConfirmacao] = useState(false);
@@ -42,13 +46,17 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
     }
   }
 
-  function handleConfirmarMudanca(observacao: string) {
+  function handleConfirmarMudanca(observacao: string, arquivoUrl?: string) {
     if (etapaSelecionada) {
-      onMudarEtapa(etapaSelecionada, observacao);
+      onMudarEtapa(etapaSelecionada, observacao || undefined, arquivoUrl);
       setModalConfirmacao(false);
       setEtapaSelecionada(null);
     }
   }
+
+  const jaExisteTransicao = etapaSelecionada
+    ? mudancasEtapa.some(m => m.etapaAnterior === orc.etapaFunil && m.etapaNova === etapaSelecionada)
+    : false;
 
   function handleValorChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = parseFloat(e.target.value.replace(/\D/g, '')) / 100;
@@ -114,7 +122,7 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
 
           {/* Etapa do funil — somente leitura quando fechado */}
           <div>
-            <p className="text-xs text-slate-400 mb-1.5">Etapa do funil</p>
+            <p className="text-xs text-slate-400 mb-1.5">Etapa atual</p>
             <div className="flex items-center gap-2">
               <span
                 className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${corEtapa.bg} ${corEtapa.text}`}
@@ -123,17 +131,21 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
               </span>
             </div>
             {!fechado && (
-              <select
-                value={orc.etapaFunil}
-                onChange={handleMudarEtapa}
-                className="mt-2 w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
-              >
-                {ORDEM_FUNIL.filter((e) => e !== 'pos_venda').map((etapa) => (
-                  <option key={etapa} value={etapa}>
-                    {ETAPA_LABELS[etapa]}
-                  </option>
-                ))}
-              </select>
+              <>
+                <p className="text-xs text-slate-400 mt-3 mb-1.5">Mover para</p>
+                <select
+                  value=""
+                  onChange={handleMudarEtapa}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+                >
+                  <option value="" disabled>Selecione a nova etapa...</option>
+                  {ORDEM_FUNIL.filter((e) => e !== 'pos_venda' && e !== orc.etapaFunil).map((etapa) => (
+                    <option key={etapa} value={etapa}>
+                      {ETAPA_LABELS[etapa]}
+                    </option>
+                  ))}
+                </select>
+              </>
             )}
           </div>
 
@@ -243,6 +255,8 @@ export function BlocoComercial({ orc, onMudarEtapa, onAtualizarValor, onFechamen
           onConfirmar={handleConfirmarMudanca}
           etapaAtual={orc.etapaFunil}
           etapaNova={etapaSelecionada}
+          jaExisteTransicao={jaExisteTransicao}
+          papelUsuario={papelUsuario}
         />
       )}
     </>

@@ -230,7 +230,7 @@ export function OrcamentoDetalhe() {
     );
   }
 
-  function handleMudarEtapa(etapaNova: EtapaFunil, observacao?: string) {
+  function handleMudarEtapa(etapaNova: EtapaFunil, observacao?: string, arquivoUrl?: string) {
     if (!id) return;
     if (isSupa) {
       const etapaAnterior = orc?.etapaFunil ?? null;
@@ -246,6 +246,7 @@ export function OrcamentoDetalhe() {
         etapaNova,
         responsavel: resp,
         observacao,
+        arquivo: arquivoUrl,
         data: new Date().toISOString(),
       };
       setLocalMudancas((prev) => {
@@ -260,7 +261,7 @@ export function OrcamentoDetalhe() {
         etapa_nova: etapaNova,
         responsavel: resp,
         observacao: observacao ?? null,
-        arquivo: null,
+        arquivo: arquivoUrl ?? null,
       }).catch(() => {});
     } else {
       atualizarEtapaFunil(id, etapaNova, usuario?.nome ?? 'Paulo Confar', observacao);
@@ -552,6 +553,8 @@ export function OrcamentoDetalhe() {
               onMudarEtapa={handleMudarEtapa}
               onAtualizarValor={handleAtualizarValor}
               onFechamento={handleFechamento}
+              mudancasEtapa={mudancasEtapa}
+              papelUsuario={usuario?.papel}
             />
 
             {/* Bloco Qualificação */}

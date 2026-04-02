@@ -1,15 +1,21 @@
 import { useState, useRef } from 'react';
-import { AlertCircle, Upload, X } from 'lucide-react';
+import { AlertCircle, Upload, X, Loader2, ShieldAlert } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import type { EtapaFunil } from '../../domain/value-objects/EtapaFunil';
 import { ETAPA_LABELS } from '../../domain/value-objects/EtapaFunil';
+import { uploadArquivo } from '../../infrastructure/supabase/storageService';
+import type { PapelUsuario } from '../../domain/value-objects/PapelUsuario';
+
+const PAPEIS_APROVADORES: PapelUsuario[] = ['dono', 'admin', 'gestor'];
 
 interface ModalConfirmarMudancaEtapaProps {
   aberto: boolean;
   onFechar: () => void;
-  onConfirmar: (observacao: string) => void;
+  onConfirmar: (observacao: string, arquivoUrl?: string) => void;
   etapaAtual: EtapaFunil;
   etapaNova: EtapaFunil;
+  jaExisteTransicao?: boolean;
+  papelUsuario?: PapelUsuario;
 }
 
 export function ModalConfirmarMudancaEtapa({
@@ -18,11 +24,16 @@ export function ModalConfirmarMudancaEtapa({
   onConfirmar,
   etapaAtual,
   etapaNova,
+  jaExisteTransicao,
+  papelUsuario,
 }: ModalConfirmarMudancaEtapaProps) {
   const [observacao, setObservacao] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [caminhoRede, setCaminhoRede] = useState('');
+  const [enviando, setEnviando] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const bloqueadoPorDuplicata = !!(jaExisteTransicao && papelUsuario && !PAPEIS_APROVADORES.includes(papelUsuario));
 
   function handleArquivoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -38,24 +49,34 @@ export function ModalConfirmarMudancaEtapa({
     }
   }
 
-  function handleConfirmar() {
-    // Validação: arquivo ou caminho é obrigatório
-    if (!arquivo && !caminhoRede.trim()) {
-      return; // Não faz nada se vazio
-    }
+  async function handleConfirmar() {
+    if (!arquivo && !caminhoRede.trim()) return;
 
-    let mensagem = observacao.trim();
-    
-    if (arquivo) {
-      mensagem += `${mensagem ? ' | ' : ''}📎 Arquivo: ${arquivo.name}`;
-    } else if (caminhoRede.trim()) {
-      mensagem += `${mensagem ? ' | ' : ''}📂 ${caminhoRede.trim()}`;
+    setEnviando(true);
+    try {
+      let arquivoUrl: string | undefined;
+      const obs = observacao.trim() || undefined;
+
+      if (arquivo) {
+        const result = await uploadArquivo(arquivo, 'mudancas-etapa');
+        if (result) {
+          arquivoUrl = result.url;
+        } else {
+          alert('Erro ao enviar arquivo. Tente novamente.');
+          setEnviando(false);
+          return;
+        }
+      } else if (caminhoRede.trim()) {
+        arquivoUrl = caminhoRede.trim();
+      }
+
+      onConfirmar(obs || '', arquivoUrl);
+      setObservacao('');
+      setArquivo(null);
+      setCaminhoRede('');
+    } finally {
+      setEnviando(false);
     }
-    
-    onConfirmar(mensagem);
-    setObservacao('');
-    setArquivo(null);
-    setCaminhoRede('');
   }
 
   function fechar() {
@@ -86,6 +107,24 @@ export function ModalConfirmarMudancaEtapa({
             </p>
           </div>
         </div>
+
+        {/* Aviso de transição duplicada */}
+        {jaExisteTransicao && (
+          <div className={`mb-5 rounded-lg px-4 py-3 flex items-start gap-3 ${bloqueadoPorDuplicata ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+            <ShieldAlert size={18} className={`${bloqueadoPorDuplicata ? 'text-red-600' : 'text-amber-600'} flex-shrink-0 mt-0.5`} />
+            <div>
+              <p className={`text-sm font-semibold ${bloqueadoPorDuplicata ? 'text-red-900' : 'text-amber-900'}`}>
+                {bloqueadoPorDuplicata ? 'Aprovação necessária' : 'Transição já registrada'}
+              </p>
+              <p className={`text-xs mt-1 ${bloqueadoPorDuplicata ? 'text-red-700' : 'text-amber-700'}`}>
+                Já existe uma mudança de <strong>{ETAPA_LABELS[etapaAtual]}</strong> → <strong>{ETAPA_LABELS[etapaNova]}</strong> no histórico.
+                {bloqueadoPorDuplicata
+                  ? ' Apenas Gestor, Admin ou Dono podem aprovar uma transição duplicada.'
+                  : ' Tem certeza que deseja registrar novamente?'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           {/* Anexar arquivo - OBRIGATÓRIO */}
@@ -182,17 +221,18 @@ export function ModalConfirmarMudancaEtapa({
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={fechar}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+            disabled={enviando}
+            className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirmar}
-            disabled={!arquivo && !caminhoRede.trim()}
+            disabled={(!arquivo && !caminhoRede.trim()) || enviando || bloqueadoPorDuplicata}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Upload size={14} />
-            Confirmar mudança
+            {enviando ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            {enviando ? 'Enviando...' : 'Confirmar mudança'}
           </button>
         </div>
       </div>
