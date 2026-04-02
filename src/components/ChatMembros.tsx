@@ -8,6 +8,8 @@ interface Membro {
   nome: string;
   email: string;
   esta_online: boolean;
+  ultimo_visto: string | null;
+  conectado_desde: string | null;
 }
 
 interface Mensagem {
@@ -74,6 +76,30 @@ function isConsecutive(msgs: Mensagem[], idx: number): boolean {
   if (prev.remetente_id !== curr.remetente_id) return false;
   const diff = new Date(curr.criado_em).getTime() - new Date(prev.criado_em).getTime();
   return diff < 120000; // 2 min
+}
+
+function formatTempoOnline(conectadoDesde: string | null): string {
+  if (!conectadoDesde) return 'Online';
+  const diff = Date.now() - new Date(conectadoDesde).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'Online agora';
+  if (min < 60) return `Online há ${min}min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `Online há ${h}h${min % 60 > 0 ? `${min % 60}min` : ''}`;
+  return `Online há ${Math.floor(h / 24)}d`;
+}
+
+function formatUltimoVisto(ultimoVisto: string | null): string {
+  if (!ultimoVisto) return 'Offline';
+  const diff = Date.now() - new Date(ultimoVisto).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'Visto agora';
+  if (min < 60) return `Visto há ${min}min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `Visto há ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'Visto ontem';
+  return `Visto há ${d}d`;
 }
 
 export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
@@ -148,17 +174,44 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
         const data = await res.json() as Array<{
           id: string; nome: string; email: string;
           esta_online: boolean; ativo: boolean;
+          ultimo_visto: string | null; conectado_desde: string | null;
         }>;
         setMembros(
           data
             .filter(m => m.ativo && m.id !== usuario?.id)
-            .map(m => ({ id: m.id, nome: m.nome, email: m.email, esta_online: m.esta_online }))
+            .map(m => ({ id: m.id, nome: m.nome, email: m.email, esta_online: m.esta_online, ultimo_visto: m.ultimo_visto, conectado_desde: m.conectado_desde }))
         );
       } catch {
         // silently fail
       }
     }
     fetchMembros();
+
+    // Realtime presence subscription — update member online status live
+    const presencaChannel = supabase
+      .channel('chat-presenca-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'presenca_usuarios' },
+        (payload) => {
+          const row = (payload.new || {}) as { usuario_id?: string; online?: boolean; ultimo_visto?: string; conectado_desde?: string | null };
+          if (!row.usuario_id) return;
+          setMembros(prev => prev.map(m =>
+            m.id === row.usuario_id
+              ? { ...m, esta_online: row.online ?? m.esta_online, ultimo_visto: row.ultimo_visto ?? m.ultimo_visto, conectado_desde: row.conectado_desde ?? m.conectado_desde }
+              : m
+          ));
+        }
+      )
+      .subscribe();
+
+    // Tick to refresh relative times every 30s
+    const tick = setInterval(() => setMembros(prev => [...prev]), 30000);
+
+    return () => {
+      supabase.removeChannel(presencaChannel);
+      clearInterval(tick);
+    };
   }, [aberto, usuario]);
 
   const carregarMensagens = useCallback(async () => {
@@ -461,7 +514,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
               </div>
               <div>
                 <span className="font-semibold text-sm block leading-tight">{dmAtivo.nome}</span>
-                <span className="text-[10px] text-slate-400">{dmAtivo.esta_online ? 'Online' : 'Offline'}</span>
+                <span className="text-[10px] text-slate-400">{dmAtivo.esta_online ? formatTempoOnline(dmAtivo.conectado_desde) : formatUltimoVisto(dmAtivo.ultimo_visto)}</span>
               </div>
             </div>
           ) : (
@@ -552,7 +605,7 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-700 truncate">{m.nome}</p>
                       <p className={`text-[10px] ${m.esta_online ? 'text-emerald-500 font-medium' : 'text-slate-400'}`}>
-                        {m.esta_online ? 'Online' : 'Offline'}
+                        {m.esta_online ? formatTempoOnline(m.conectado_desde) : formatUltimoVisto(m.ultimo_visto)}
                       </p>
                     </div>
                     {naoLidasPorConta.has(m.id) && (

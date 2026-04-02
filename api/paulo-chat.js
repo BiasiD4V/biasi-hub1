@@ -1,6 +1,7 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://vzaabtzcilyoknksvhrc.supabase.co';
 const PAULO_TRAINING_TABLE = process.env.PAULO_TRAINING_TABLE || 'paulo_feedback_termos';
 const PAULO_TRAINING_ENABLED = process.env.PAULO_TRAINING_ENABLED !== 'false';
+const PAULO_CONHECIMENTO_TABLE = 'paulo_conhecimento';
 
 const CONTEXTO_ROTA = {
   '/dashboard': 'Dashboard BI com KPIs e filtros comerciais.',
@@ -1507,6 +1508,65 @@ async function registrarNaoMapeados({ serviceKey, userId, pathname, eventos }) {
   }
 }
 
+// ═══════ SISTEMA DE APRENDIZADO ATIVO DO PAULO ═══════
+
+async function buscarConhecimentoAprendido(serviceKey, pathname) {
+  if (!serviceKey) return [];
+  try {
+    // Buscar últimos 30 aprendizados relevantes (mesma rota + globais)
+    const rotas = [pathname, 'global'].filter(Boolean);
+    const filtro = rotas.map(r => `rota.eq.${r}`).join(',');
+    const url = `${SUPABASE_URL}/rest/v1/${PAULO_CONHECIMENTO_TABLE}?select=pergunta,resposta,rota,categoria&or=(${filtro})&ativo=eq.true&order=criado_em.desc&limit=30`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+      },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function salvarAprendizado(serviceKey, { pergunta, resposta, rota, categoria = 'conversa' }) {
+  if (!serviceKey || !pergunta || !resposta) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${PAULO_CONHECIMENTO_TABLE}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        pergunta: String(pergunta).slice(0, 2000),
+        resposta: String(resposta).slice(0, 4000),
+        rota: rota || 'global',
+        categoria,
+        ativo: true,
+      }),
+    });
+  } catch {
+    // silently fail
+  }
+}
+
+function montarContextoAprendido(conhecimentos) {
+  if (!conhecimentos.length) return '';
+  const linhas = conhecimentos.map((c, i) =>
+    `[${i + 1}] Rota: ${c.rota || 'global'} | Cat: ${c.categoria || 'geral'}\nP: ${c.pergunta}\nR: ${c.resposta}`
+  );
+  return [
+    '\n--- BASE DE CONHECIMENTO APRENDIDA (use como referencia prioritaria) ---',
+    ...linhas,
+    '--- FIM DA BASE DE CONHECIMENTO ---\n',
+  ].join('\n');
+}
+
 function playbookDaRota(pathname = '') {
   const guia = guiaDaRota(pathname);
   const campos = camposDaRota(pathname);
@@ -1582,17 +1642,36 @@ export default async function handler(req, res) {
       });
     }
 
+    // Buscar conhecimento aprendido de conversas anteriores
+    const conhecimentos = await buscarConhecimentoAprendido(serviceKey, pathname);
+    const contextoAprendido = montarContextoAprendido(conhecimentos);
+
     const systemPrompt = [
-      'Voce e o Paulo IA, assistente operacional do BiasiHub.',
-      'Responda em portugues-BR com tom humano, natural e direto.',
-      'Nunca soe como robo. Evite frases repetitivas e padrao engessado.',
-      'Quando o usuario demonstrar duvida, inseguranca ou pedir ajuda, responda em passo a passo numerado.',
-      'Quando o usuario pedir para explicar tudo/literalmente tudo, entregue resposta completa em secoes: visao geral, blocos, campos, termos, cores e fluxo.',
-      'Sempre considere o contexto da rota para orientar exatamente o que fazer na tela atual.',
-      'Se nao souber algo, diga com transparencia e proponha verificacao pratica.',
-      'Nao invente campos ou funcionalidades inexistentes.',
-      'Prefira orientacoes acionaveis e curtas.',
+      'Voce e o Paulo, assistente IA do BiasiHub — sistema de gestao de orcamentos, propostas comerciais, clientes, fornecedores, composicoes, insumos e mao de obra da Biasi Engenharia.',
+      '',
+      '## Personalidade',
+      '- Tom profissional mas acessivel, como um colega experiente.',
+      '- Responda em portugues-BR natural, sem parecer robo.',
+      '- Seja direto e acionavel. Frases curtas. Sem enrolacao.',
+      '- Use numeracao quando der passo a passo.',
+      '- Pode usar estilo conversacional quando apropriado.',
+      '',
+      '## Regras de conteudo',
+      '- NUNCA invente funcionalidades, campos ou botoes que nao existem no sistema.',
+      '- Se nao souber algo, diga com transparencia e proponha verificacao pratica.',
+      '- Sempre considere o contexto da rota atual para orientar exatamente o que fazer naquela tela.',
+      '- Quando o usuario pedir explicacao completa, entregue: visao geral, blocos da tela, campos principais, termos-chave, leitura de cores e fluxo de uso.',
+      '- Quando identificar algo novo ou util que o usuario te ensinou, inclua no final da resposta: [APRENDIZADO: resumo curto do que aprendeu]',
+      '',
+      '## Aprendizado continuo',
+      '- Voce tem acesso a uma base de conhecimento construida a partir de conversas anteriores.',
+      '- Use essa base como referencia prioritaria para perguntas semelhantes.',
+      '- Quando o usuario corrigir voce ou ensinar algo novo sobre o sistema, voce deve aprender.',
+      '',
+      '## Contexto da rota atual',
       playbookDaRota(pathname),
+      '',
+      contextoAprendido,
     ].join('\n');
 
     const input = [
@@ -1617,10 +1696,10 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-4-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         messages: input,
-        temperature: 0.3,
-        max_tokens: 900,
+        temperature: 0.4,
+        max_tokens: 1200,
       }),
     });
 
@@ -1642,7 +1721,23 @@ export default async function handler(req, res) {
     }
 
     const aiPayload = await aiRes.json();
-    const resposta = extrairTextoOpenAI(aiPayload) || fallbackInteligente(pergunta, pathname, historico, { reportUnknown });
+    let resposta = extrairTextoOpenAI(aiPayload) || fallbackInteligente(pergunta, pathname, historico, { reportUnknown });
+
+    // Extrair e salvar aprendizados automaticos
+    const matchAprendizado = resposta.match(/\[APRENDIZADO:\s*(.+?)\]/i);
+    if (matchAprendizado) {
+      const aprendizado = matchAprendizado[1].trim();
+      // Salvar na base de conhecimento (async, nao bloqueia resposta)
+      salvarAprendizado(serviceKey, {
+        pergunta: pergunta.slice(0, 500),
+        resposta: aprendizado,
+        rota: pathname || 'global',
+        categoria: 'auto-aprendizado',
+      }).catch(() => {});
+      // Remover a tag da resposta que vai pro usuario
+      resposta = resposta.replace(/\s*\[APRENDIZADO:\s*.+?\]/gi, '').trim();
+    }
+
     await registrarNaoMapeados({
       serviceKey,
       userId: validacao.user?.id,

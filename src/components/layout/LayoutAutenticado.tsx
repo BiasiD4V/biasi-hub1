@@ -127,12 +127,14 @@ export function LayoutAutenticado() {
 
     registrarOnline();
 
+    // Heartbeat a cada 30s para manter staleness check do servidor OK
     const heartbeat = setInterval(() => {
+      if (document.visibilityState === 'hidden') return; // não gasta heartbeat se aba está oculta
       supabase.from('presenca_usuarios').update({
         online: true,
         ultimo_visto: new Date().toISOString(),
       }).eq('usuario_id', usuario.id).then();
-    }, 60000);
+    }, 30000);
 
     function marcarOffline() {
       supabase.from('presenca_usuarios').update({
@@ -142,11 +144,22 @@ export function LayoutAutenticado() {
       }).eq('usuario_id', usuario!.id).then();
     }
 
+    // visibilitychange: marca offline ao ocultar aba, online ao voltar
+    function handleVisibility() {
+      if (document.visibilityState === 'hidden') {
+        marcarOffline();
+      } else {
+        registrarOnline();
+      }
+    }
+
     window.addEventListener('beforeunload', marcarOffline);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       clearInterval(heartbeat);
       window.removeEventListener('beforeunload', marcarOffline);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [usuario?.id, usuario?.nome]);
 
