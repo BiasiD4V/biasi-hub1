@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
 interface Presenca {
-  usuario_id: string;
-  online: boolean;
-  ultimo_visto: string;
-  conectado_desde: string | null;
+  user_id: string;
+  esta_online: boolean;
+  ultimo_heartbeat: string;
+  ultima_entrada: string | null;
 }
 
 interface Membro {
@@ -221,7 +221,7 @@ export function Membros() {
       const { data } = await supabase.from('presenca_usuarios').select('*');
       if (data) {
         const map: Record<string, Presenca> = {};
-        (data as Presenca[]).forEach((p) => { map[p.usuario_id] = p; });
+        (data as Presenca[]).forEach((p) => { map[p.user_id] = p; });
         setPresencas(map);
       }
     }
@@ -232,8 +232,8 @@ export function Membros() {
       .channel('presenca-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'presenca_usuarios' }, (payload) => {
         const p = payload.new as Presenca;
-        if (p?.usuario_id) {
-          setPresencas((prev) => ({ ...prev, [p.usuario_id]: p }));
+        if (p?.user_id) {
+          setPresencas((prev) => ({ ...prev, [p.user_id]: p }));
         }
       })
       .subscribe();
@@ -248,7 +248,13 @@ export function Membros() {
   }, [usuario?.id, usuario?.nome]);
 
   const totalAtivos = membros.filter(m => m.ativo).length;
-  const totalOnline = Object.values(presencas).filter(p => p.online).length;
+  const STALE_MS = 2 * 60 * 1000; // 2 min sem heartbeat = offline
+  function isReallyOnline(p: Presenca) {
+    if (!p.esta_online) return false;
+    const elapsed = Date.now() - new Date(p.ultimo_heartbeat).getTime();
+    return elapsed < STALE_MS;
+  }
+  const totalOnline = Object.values(presencas).filter(isReallyOnline).length;
   const porPapel = membros.reduce<Record<string, number>>((acc, m) => {
     acc[m.papel] = (acc[m.papel] || 0) + 1;
     return acc;
@@ -328,7 +334,7 @@ export function Membros() {
               {membros.map((m) => {
                 const Icone = ICONE_PAPEL[m.papel] || Users;
                 const p = presencas[m.id];
-                const isOnline = p?.online;
+                const isOnline = p ? isReallyOnline(p) : false;
                 return (
                       <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-5 py-3.5">
@@ -348,11 +354,11 @@ export function Membros() {
                               {isOnline ? (
                                 <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
                                   <Wifi size={9} />
-                                  Online {p?.conectado_desde ? `· ${formatarTempo(p.conectado_desde)}` : ''}
+                                  Online {p?.ultima_entrada ? `· ${formatarTempo(p.ultima_entrada)}` : ''}
                                 </div>
-                              ) : p?.ultimo_visto ? (
+                              ) : p?.ultimo_heartbeat ? (
                                 <div className="text-[10px] text-slate-400">
-                                  Visto {formatarUltimoVisto(p.ultimo_visto)}
+                                  Visto {formatarUltimoVisto(p.ultimo_heartbeat)}
                                 </div>
                               ) : null}
                             </div>

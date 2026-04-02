@@ -194,11 +194,11 @@ export function ChatMembros({ aberto, onFechar }: ChatMembrosProps) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'presenca_usuarios' },
         (payload) => {
-          const row = (payload.new || {}) as { usuario_id?: string; online?: boolean; ultimo_visto?: string; conectado_desde?: string | null };
-          if (!row.usuario_id) return;
+          const row = (payload.new || {}) as { user_id?: string; esta_online?: boolean; ultimo_heartbeat?: string; ultima_entrada?: string | null };
+          if (!row.user_id) return;
           setMembros(prev => prev.map(m =>
-            m.id === row.usuario_id
-              ? { ...m, esta_online: row.online ?? m.esta_online, ultimo_visto: row.ultimo_visto ?? m.ultimo_visto, conectado_desde: row.conectado_desde ?? m.conectado_desde }
+            m.id === row.user_id
+              ? { ...m, esta_online: row.esta_online ?? m.esta_online, ultimo_visto: row.ultimo_heartbeat ?? m.ultimo_visto, conectado_desde: row.ultima_entrada ?? m.conectado_desde }
               : m
           ));
         }

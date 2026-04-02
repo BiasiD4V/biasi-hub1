@@ -40,7 +40,7 @@ export default async function handler(req, res) {
         }
       ),
       fetch(
-        `${supabaseUrl}/rest/v1/presenca_usuarios?select=usuario_id,online,ultimo_visto,conectado_desde`,
+        `${supabaseUrl}/rest/v1/presenca_usuarios?select=user_id,esta_online,ultimo_heartbeat,ultima_entrada`,
         {
           headers: {
             'Authorization': `Bearer ${serviceKey}`,
@@ -59,11 +59,11 @@ export default async function handler(req, res) {
     const TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos sem heartbeat = offline
     if (Array.isArray(presencas)) {
       for (const p of presencas) {
-        const ultimoVisto = p.ultimo_visto ? new Date(p.ultimo_visto).getTime() : 0;
-        const stale = (agora - ultimoVisto) > TIMEOUT_MS;
-        presencaMap[p.usuario_id] = {
+        const ultimoHb = p.ultimo_heartbeat ? new Date(p.ultimo_heartbeat).getTime() : 0;
+        const stale = (agora - ultimoHb) > TIMEOUT_MS;
+        presencaMap[p.user_id] = {
           ...p,
-          online: p.online && !stale, // se heartbeat expirou, forçar offline
+          esta_online: p.esta_online && !stale, // se heartbeat expirou, forçar offline
         };
       }
     }
@@ -75,9 +75,9 @@ export default async function handler(req, res) {
       email: m.email,
       papel: m.papel,
       ativo: m.ativo,
-      esta_online: presencaMap[m.id]?.online ?? false,
-      ultimo_visto: presencaMap[m.id]?.ultimo_visto ?? null,
-      conectado_desde: presencaMap[m.id]?.conectado_desde ?? null,
+      esta_online: presencaMap[m.id]?.esta_online ?? false,
+      ultimo_visto: presencaMap[m.id]?.ultimo_heartbeat ?? null,
+      conectado_desde: presencaMap[m.id]?.ultima_entrada ?? null,
     }));
 
     return res.status(200).json(resultado);

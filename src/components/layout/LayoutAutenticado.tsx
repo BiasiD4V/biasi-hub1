@@ -117,12 +117,11 @@ export function LayoutAutenticado() {
 
     function registrarOnline() {
       supabase.from('presenca_usuarios').upsert({
-        usuario_id: usuario!.id,
-        usuario_nome: usuario!.nome,
-        online: true,
-        ultimo_visto: new Date().toISOString(),
-        conectado_desde: new Date().toISOString(),
-      }, { onConflict: 'usuario_id' }).then();
+        user_id: usuario!.id,
+        esta_online: true,
+        ultimo_heartbeat: new Date().toISOString(),
+        ultima_entrada: new Date().toISOString(),
+      }, { onConflict: 'user_id' }).then();
     }
 
     registrarOnline();
@@ -131,17 +130,17 @@ export function LayoutAutenticado() {
     const heartbeat = setInterval(() => {
       if (document.visibilityState === 'hidden') return; // não gasta heartbeat se aba está oculta
       supabase.from('presenca_usuarios').update({
-        online: true,
-        ultimo_visto: new Date().toISOString(),
-      }).eq('usuario_id', usuario.id).then();
+        esta_online: true,
+        ultimo_heartbeat: new Date().toISOString(),
+      }).eq('user_id', usuario.id).then();
     }, 30000);
 
     function marcarOffline() {
       supabase.from('presenca_usuarios').update({
-        online: false,
-        ultimo_visto: new Date().toISOString(),
-        conectado_desde: null,
-      }).eq('usuario_id', usuario!.id).then();
+        esta_online: false,
+        ultimo_heartbeat: new Date().toISOString(),
+        ultima_entrada: null,
+      }).eq('user_id', usuario!.id).then();
     }
 
     // visibilitychange: marca offline ao ocultar aba, online ao voltar
