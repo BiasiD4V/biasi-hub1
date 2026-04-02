@@ -33,7 +33,7 @@ export function ModalConfirmarMudancaEtapa({
   const [enviando, setEnviando] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const bloqueadoPorDuplicata = !!(jaExisteTransicao && papelUsuario && !PAPEIS_APROVADORES.includes(papelUsuario));
+  const bloqueadoPorDuplicata = !!(jaExisteTransicao && etapaNova === 'proposta_enviada' && papelUsuario && !PAPEIS_APROVADORES.includes(papelUsuario));
 
   function handleArquivoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -119,7 +119,7 @@ export function ModalConfirmarMudancaEtapa({
               <p className={`text-xs mt-1 ${bloqueadoPorDuplicata ? 'text-red-700' : 'text-amber-700'}`}>
                 Já existe uma mudança de <strong>{ETAPA_LABELS[etapaAtual]}</strong> → <strong>{ETAPA_LABELS[etapaNova]}</strong> no histórico.
                 {bloqueadoPorDuplicata
-                  ? ' Apenas Gestor, Admin ou Dono podem aprovar uma transição duplicada.'
+                  ? ' Somente Gestor, Admin ou Dono podem reenviar uma Proposta Enviada duplicada.'
                   : ' Tem certeza que deseja registrar novamente?'}
               </p>
             </div>
