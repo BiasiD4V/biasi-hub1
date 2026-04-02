@@ -17,6 +17,7 @@ import {
   Sparkles,
   MessageCircle,
   KanbanSquare,
+  HardHat,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -60,6 +61,7 @@ const MENU: SecaoMenu[] = [
     titulo: 'Gestão',
     itens: [
       { rotulo: 'Bira', para: '/bira', icone: KanbanSquare },
+      { rotulo: 'Diário de Obra', para: '/rdo', icone: HardHat },
     ],
   },
   {

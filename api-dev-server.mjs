@@ -161,10 +161,33 @@ async function handleComment(req, res) {
   json(res, 200, { id: data.id, created: data.created });
 }
 
+// ─── RDO (Diário de Obra) ──────────────────────────
+const RDO_TOKEN = process.env.RDO_TOKEN;
+const RDO_BASE = 'https://apiexterna.diariodeobra.app/v1';
+
+async function handleRdo(req, res, urlObj) {
+  if (!RDO_TOKEN) return json(res, 500, { error: 'RDO_TOKEN not configured' });
+  const rdoPath = urlObj.searchParams.get('path');
+  if (!rdoPath) return json(res, 400, { error: 'Missing path parameter' });
+  if (!/^[a-zA-Z0-9\-\/]+$/.test(rdoPath)) return json(res, 400, { error: 'Invalid path' });
+  const params = new URLSearchParams(urlObj.searchParams);
+  params.delete('path');
+  const qs = params.toString();
+  const apiUrl = `${RDO_BASE}/${rdoPath}${qs ? '?' + qs : ''}`;
+  try {
+    const r = await fetch(apiUrl, { headers: { 'Content-Type': 'application/json', token: RDO_TOKEN } });
+    const data = await r.json();
+    json(res, r.status, data);
+  } catch (e) {
+    json(res, 502, { error: 'Failed to fetch from RDO API', detail: e.message });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { cors(res); res.writeHead(200); res.end(); return; }
   const url = new URL(req.url, 'http://localhost');
   try {
+    if (url.pathname === '/api/rdo' && req.method === 'GET') return await handleRdo(req, res, url);
     if (url.pathname === '/api/jira' && req.method === 'GET') return await handleJira(req, res);
     if (url.pathname === '/api/jira-issue' && req.method === 'GET') return await handleJiraIssue(req, res, url.searchParams.get('key'));
     if (url.pathname === '/api/jira-transition' && req.method === 'POST') return await handleTransition(req, res);

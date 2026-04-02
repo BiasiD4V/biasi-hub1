@@ -30,6 +30,7 @@ import { Composicoes } from './pages/Composicoes';
 import { Templates } from './pages/Templates';
 import { Aprovacoes } from './pages/Aprovacoes';
 import { Bira } from './pages/Bira';
+import { DiarioDeObra } from './pages/DiarioDeObra';
 import { Propostas } from './pages/Propostas';
 import { MaoDeObra } from './pages/MaoDeObra';
 import { InclusoExcluso } from './pages/InclusoExcluso';
@@ -82,6 +83,7 @@ export function App() {
                   <Route path="/incluso-excluso" element={<InclusoExcluso />} />
                   <Route path="/aprovacoes" element={<Aprovacoes />} />
                   <Route path="/bira" element={<Bira />} />
+                  <Route path="/rdo" element={<DiarioDeObra />} />
                   <Route path="/bi" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/operacao/orcamentos" element={<Propostas />} />
                   <Route path="/meus-dispositivos" element={<MeusDispositivos />} />
