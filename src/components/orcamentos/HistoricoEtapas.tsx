@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { GitBranch, FileText, Edit2, X, Save, Trash2, Upload, ExternalLink, Loader2 } from 'lucide-react';
+import { GitBranch, FileText, Edit2, X, Save, Trash2, Link, ExternalLink } from 'lucide-react';
 import type { MudancaEtapa } from '../../domain/entities/MudancaEtapa';
 import { ETAPA_LABELS, ETAPA_CORES } from '../../domain/value-objects/EtapaFunil';
-import { uploadArquivo, abrirArquivo, nomeArquivo } from '../../infrastructure/supabase/storageService';
+import { abrirArquivo, nomeArquivo } from '../../infrastructure/supabase/storageService';
+import type { PapelUsuario } from '../../domain/value-objects/PapelUsuario';
+
+const PAPEIS_ADMIN: PapelUsuario[] = ['dono', 'admin', 'gestor'];
 
 interface HistoricoEtapasProps {
   mudancas: MudancaEtapa[];
   onUpdateMudanca?: (mudanca: MudancaEtapa) => void;
   onDeleteMudanca?: (mudancaId: string) => void;
+  papelUsuario?: PapelUsuario;
 }
 
 function formatarData(iso: string): string {
@@ -39,13 +43,14 @@ function serializeArquivos(urls: string[]): string | undefined {
   return JSON.stringify(urls);
 }
 
-export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: HistoricoEtapasProps) {
+export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca, papelUsuario }: HistoricoEtapasProps) {
   const [filePreviewOpen, setFilePreviewOpen] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<MudancaEtapa | null>(null);
   const [editArquivos, setEditArquivos] = useState<string[]>([]);
-  const [fileInputKey, setFileInputKey] = useState(0);
-  const [uploading, setUploading] = useState(false);
+  const [novoLink, setNovoLink] = useState('');
+
+  const podeExcluir = papelUsuario && PAPEIS_ADMIN.includes(papelUsuario);
 
   if (mudancas.length === 0) {
     return (
@@ -239,50 +244,55 @@ export function HistoricoEtapas({ mudancas, onUpdateMudanca, onDeleteMudanca }: 
                     ))}
                   </div>
                 )}
-                <label className={`flex items-center justify-center w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg transition-colors ${uploading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-slate-50'}`}>
-                  <div className="flex items-center gap-2 text-slate-500 text-sm">
-                    {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    <span>{uploading ? 'Enviando...' : 'Adicionar arquivo'}</span>
-                  </div>
+                <div className="flex items-center gap-2">
                   <input
-                    key={fileInputKey}
-                    type="file"
-                    disabled={uploading}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setUploading(true);
-                        const result = await uploadArquivo(file, 'mudancas-etapa');
-                        if (result) {
-                          setEditArquivos(prev => [...prev, result.url]);
-                        } else {
-                          alert('Erro ao enviar arquivo. Verifique sua conexão e tente novamente.');
-                        }
-                        setUploading(false);
+                    type="text"
+                    value={novoLink}
+                    onChange={(e) => setNovoLink(e.target.value)}
+                    placeholder="Cole um link ou caminho de pasta..."
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && novoLink.trim()) {
+                        setEditArquivos(prev => [...prev, novoLink.trim()]);
+                        setNovoLink('');
                       }
-                      setFileInputKey(k => k + 1);
                     }}
-                    className="hidden"
                   />
-                </label>
+                  <button
+                    type="button"
+                    disabled={!novoLink.trim()}
+                    onClick={() => {
+                      if (novoLink.trim()) {
+                        setEditArquivos(prev => [...prev, novoLink.trim()]);
+                        setNovoLink('');
+                      }
+                    }}
+                    className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    <Link size={14} />
+                    Adicionar
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Botões */}
             <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  if (onDeleteMudanca) {
-                    onDeleteMudanca(editForm.id);
-                  }
-                  setEditingId(null);
-                  setEditForm(null);
-                }}
-                className="flex items-center gap-1 px-3 py-2 border border-red-200 hover:bg-red-50 text-red-600 font-medium rounded-lg transition-colors text-sm"
-              >
-                <Trash2 size={14} />
-                Deletar
-              </button>
+              {podeExcluir && (
+                <button
+                  onClick={() => {
+                    if (onDeleteMudanca) {
+                      onDeleteMudanca(editForm.id);
+                    }
+                    setEditingId(null);
+                    setEditForm(null);
+                  }}
+                  className="flex items-center gap-1 px-3 py-2 border border-red-200 hover:bg-red-50 text-red-600 font-medium rounded-lg transition-colors text-sm"
+                >
+                  <Trash2 size={14} />
+                  Deletar
+                </button>
+              )}
               <button
                 onClick={() => {
                   setEditingId(null);

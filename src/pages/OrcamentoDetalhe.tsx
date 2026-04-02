@@ -512,6 +512,7 @@ export function OrcamentoDetalhe() {
             {/* Histórico de etapas */}
             <HistoricoEtapas 
               mudancas={mudancasEtapa}
+              papelUsuario={usuario?.papel}
               onUpdateMudanca={(updatedMudanca) => {
                 if (isSupa && id) {
                   setLocalMudancas(prev => {
