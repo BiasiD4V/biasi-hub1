@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import {
-  Search, RefreshCw, List, LayoutGrid, ArrowUpDown, XCircle, ExternalLink, Plus,
+  Search, RefreshCw, List, LayoutGrid, XCircle, ExternalLink, Plus,
   X, ChevronDown, ChevronRight, Send, Zap, BookOpen, Bug, CheckSquare, Star, Package, GitBranch,
   Clock, Tag, User, AlertCircle, MessageSquare, Calendar, GanttChart,
 } from 'lucide-react';
@@ -1052,6 +1052,7 @@ export function Bira() {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDir('asc'); }
   }
+  void toggleSort; // used in sort headers
 
   const stats = useMemo(() => ({
     total: issues.length,
