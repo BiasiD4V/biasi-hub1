@@ -505,16 +505,21 @@ function CreateIssueModal({ onClose, onCreate }: {
   );
 }
 
-// ── Lista Hierárquica (pai → filhos → subtasks) ───────────────────────────────
+// ── Lista Hierárquica (pai → filho → subtask, 3 níveis) ───────────────────────
 function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
   issues: JiraIssue[];
   onOpenPanel: (i: JiraIssue) => void;
   onStatusChange: (key: string, t: typeof TRANSITIONS[0]) => void;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(issues.filter(i => !i.parentKey).map(i => i.key)));
 
-  // Build hierarchy: parents = issues with no parentKey, children = grouped by parentKey
-  const parentIssues = issues.filter(i => !i.parentKey);
+  // Build lookup & child map
+  const issueMap = useMemo(() => {
+    const m: Record<string, JiraIssue> = {};
+    issues.forEach(i => { m[i.key] = i; });
+    return m;
+  }, [issues]);
+
   const childMap = useMemo(() => {
     const map: Record<string, JiraIssue[]> = {};
     issues.forEach(i => {
@@ -526,9 +531,26 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
     return map;
   }, [issues]);
 
-  // Standalone children (whose parent isn't in the list)
-  const parentKeys = new Set(parentIssues.map(p => p.key));
-  const orphans = issues.filter(i => i.parentKey && !parentKeys.has(i.parentKey));
+  // Find true roots: issues whose full ancestor chain leads to no parentKey
+  // An issue is a root if it has no parentKey, OR its parentKey isn't in our list AND its grandparent isn't either
+  const roots = useMemo(() => {
+    function findRoot(key: string, visited: Set<string>): string | null {
+      const issue = issueMap[key];
+      if (!issue) return null;
+      if (!issue.parentKey) return key;
+      if (visited.has(issue.parentKey)) return key; // circular
+      if (!issueMap[issue.parentKey]) return key; // parent not in list = treat as root
+      visited.add(issue.parentKey);
+      return findRoot(issue.parentKey, visited);
+    }
+    const rootKeys = new Set<string>();
+    issues.forEach(i => {
+      const r = findRoot(i.key, new Set());
+      if (r) rootKeys.add(r);
+    });
+    return issues.filter(i => rootKeys.has(i.key) && !i.parentKey)
+      .concat(issues.filter(i => rootKeys.has(i.key) && i.parentKey && !issueMap[i.parentKey]));
+  }, [issues, issueMap]);
 
   function toggle(key: string) {
     setExpanded(prev => {
@@ -538,37 +560,51 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
     });
   }
 
+  const DEPTH_COLORS = ['text-violet-600', 'text-blue-600', 'text-cyan-600', 'text-slate-500'];
+  const DEPTH_BG = ['', 'bg-blue-50/20', 'bg-violet-50/20', 'bg-slate-50/20'];
+  const DEPTH_BORDER = ['border-l-violet-400', 'border-l-blue-400', 'border-l-cyan-400', 'border-l-slate-300'];
+
   function IssueRow({ issue, depth }: { issue: JiraIssue; depth: number }) {
     const children = childMap[issue.key] || [];
     const hasChildren = children.length > 0;
     const isOpen = expanded.has(issue.key);
     const TypeIcon = ISSUE_TYPE_ICON[issue.issuetype] || CheckSquare;
     const isConcluido = issue.status === 'Concluído';
+    const depthColor = DEPTH_COLORS[Math.min(depth, DEPTH_COLORS.length - 1)];
+    const depthBg = DEPTH_BG[Math.min(depth, DEPTH_BG.length - 1)];
 
     return (
       <>
         <tr onClick={() => onOpenPanel(issue)}
-          className="hover:bg-blue-50/40 transition-colors cursor-pointer group border-b border-slate-50">
-          <td className="px-4 py-3">
-            <div className="flex items-center gap-1" style={{ paddingLeft: depth * 24 }}>
+          className={`hover:bg-blue-50/40 transition-colors cursor-pointer group border-b border-slate-100 ${depthBg}`}>
+          <td className="px-4 py-2.5">
+            <div className="flex items-center gap-1" style={{ paddingLeft: depth * 28 }}>
+              {depth > 0 && (
+                <span className={`absolute left-0 w-0.5 top-0 bottom-0 ${DEPTH_BORDER[Math.min(depth, DEPTH_BORDER.length - 1)]}`} />
+              )}
               {hasChildren ? (
                 <button onClick={e => { e.stopPropagation(); toggle(issue.key); }}
-                  className="p-0.5 rounded hover:bg-slate-200 text-slate-400 transition-colors flex-shrink-0">
-                  {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  className="p-0.5 rounded hover:bg-slate-200 text-slate-400 transition-all flex-shrink-0">
+                  <ChevronRight size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
                 </button>
               ) : (
                 <span className="w-5 flex-shrink-0" />
               )}
-              <TypeIcon size={12} className="text-slate-400 flex-shrink-0" />
-              <span className={`font-mono text-xs font-bold ${depth === 0 ? 'text-violet-600' : depth === 1 ? 'text-blue-600' : 'text-slate-500'}`}>{issue.key}</span>
+              <TypeIcon size={13} className={`flex-shrink-0 ${depth === 0 ? 'text-violet-500' : depth === 1 ? 'text-blue-400' : 'text-slate-400'}`} />
+              <span className={`font-mono text-[11px] font-bold ${depthColor}`}>{issue.key}</span>
+              {hasChildren && (
+                <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full font-medium ml-1">
+                  {children.length}
+                </span>
+              )}
             </div>
           </td>
-          <td className="px-4 py-3 max-w-md">
-            <span className={`font-medium text-[13px] leading-snug ${isConcluido ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+          <td className="px-4 py-2.5 max-w-md">
+            <span className={`font-medium text-[13px] leading-snug ${isConcluido ? 'line-through text-slate-400' : depth === 0 ? 'text-slate-900 font-semibold' : 'text-slate-700'}`}>
               {issue.summary}
             </span>
           </td>
-          <td className="px-4 py-3">
+          <td className="px-4 py-2.5">
             {issue.assigneeName ? (
               <div className="flex items-center gap-1.5">
                 {issue.assigneeAvatar
@@ -579,17 +615,17 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
               </div>
             ) : <span className="text-xs text-slate-300">—</span>}
           </td>
-          <td className="px-4 py-3">
+          <td className="px-4 py-2.5">
             <span className={`text-xs font-bold ${PRIORITY_CLS[issue.priority] ?? 'text-slate-400'}`}>
               {PRIORITY_ICON[issue.priority] ?? '–'}
             </span>
           </td>
-          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+          <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
             <StatusDropdown current={issue.status} onSelect={t => onStatusChange(issue.key, t)} />
           </td>
-          <td className="px-4 py-3 text-xs text-slate-400">{formatDate(issue.created)}</td>
-          <td className="px-4 py-3 text-xs text-slate-400">{formatDate(issue.updated)}</td>
-          <td className="px-4 py-3">
+          <td className="px-4 py-2.5 text-xs text-slate-400">{formatDate(issue.created)}</td>
+          <td className="px-4 py-2.5 text-xs text-slate-400">{formatDate(issue.updated)}</td>
+          <td className="px-4 py-2.5">
             <a href={issue.webUrl} target="_blank" rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
               className="p-1.5 rounded text-slate-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all inline-flex">
@@ -611,7 +647,7 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
           <table className="w-full text-sm min-w-[960px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="text-left px-4 py-3 w-44 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ticket</th>
+                <th className="text-left px-4 py-3 w-52 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ticket</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Resumo</th>
                 <th className="text-left px-4 py-3 w-36 text-xs font-semibold text-slate-400 uppercase tracking-wide">Responsável</th>
                 <th className="text-left px-4 py-3 w-20 text-xs font-semibold text-slate-400 uppercase tracking-wide">Prior.</th>
@@ -622,8 +658,7 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
               </tr>
             </thead>
             <tbody>
-              {parentIssues.map(p => <IssueRow key={p.key} issue={p} depth={0} />)}
-              {orphans.length > 0 && orphans.map(o => <IssueRow key={o.key} issue={o} depth={0} />)}
+              {roots.map(p => <IssueRow key={p.key} issue={p} depth={0} />)}
               {issues.length === 0 && (
                 <tr><td colSpan={8} className="px-4 py-16 text-center text-slate-400 text-sm">Nenhum issue encontrado</td></tr>
               )}
@@ -635,21 +670,21 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
   );
 }
 
-// ── Calendário ─────────────────────────────────────────────────────────────────
-function CalendarioView({ issues, onOpenPanel }: {
+// ── Calendário (com drag & drop) ───────────────────────────────────────────────
+function CalendarioView({ issues, onOpenPanel, onDuedateChange }: {
   issues: JiraIssue[];
   onOpenPanel: (i: JiraIssue) => void;
+  onDuedateChange: (key: string, newDate: string | null) => void;
 }) {
   const [current, setCurrent] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+  const [dragOverSidebar, setDragOverSidebar] = useState(false);
 
   const daysInMonth = new Date(current.year, current.month + 1, 0).getDate();
-  const firstDayOfWeek = new Date(current.year, current.month, 1).getDay(); // 0=Sun
-  // Adjust to Monday start: 0=Mon..6=Sun
+  const firstDayOfWeek = new Date(current.year, current.month, 1).getDay();
   const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-
   const monthName = new Date(current.year, current.month).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
-  // Group issues by duedate day
   const issuesByDay = useMemo(() => {
     const map: Record<number, JiraIssue[]> = {};
     issues.forEach(i => {
@@ -664,19 +699,11 @@ function CalendarioView({ issues, onOpenPanel }: {
     return map;
   }, [issues, current]);
 
-  // Unscheduled issues (no duedate)
   const unscheduled = useMemo(() => issues.filter(i => !i.duedate && i.status !== 'Concluído'), [issues]);
 
-  function prev() {
-    setCurrent(c => c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 });
-  }
-  function next() {
-    setCurrent(c => c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 });
-  }
-  function goToday() {
-    const d = new Date();
-    setCurrent({ year: d.getFullYear(), month: d.getMonth() });
-  }
+  function prev() { setCurrent(c => c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }); }
+  function next() { setCurrent(c => c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 }); }
+  function goToday() { const d = new Date(); setCurrent({ year: d.getFullYear(), month: d.getMonth() }); }
 
   const today = new Date();
   const isCurrentMonth = today.getFullYear() === current.year && today.getMonth() === current.month;
@@ -687,12 +714,28 @@ function CalendarioView({ issues, onOpenPanel }: {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
 
+  function handleDropOnDay(day: number, e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverDay(null);
+    const issueKey = e.dataTransfer.getData('text/plain');
+    if (!issueKey) return;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const newDate = `${current.year}-${pad(current.month + 1)}-${pad(day)}`;
+    onDuedateChange(issueKey, newDate);
+  }
+
+  function handleDropOnSidebar(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverSidebar(false);
+    const issueKey = e.dataTransfer.getData('text/plain');
+    if (!issueKey) return;
+    onDuedateChange(issueKey, null);
+  }
+
   return (
     <div className="p-4 flex gap-4">
-      {/* Calendar grid */}
       <div className="flex-1">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Month navigation */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
             <button onClick={goToday} className="text-xs font-medium text-slate-500 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">Hoje</button>
             <div className="flex items-center gap-3">
@@ -700,34 +743,49 @@ function CalendarioView({ issues, onOpenPanel }: {
               <span className="text-sm font-semibold text-slate-700 capitalize min-w-[140px] text-center">{monthName}</span>
               <button onClick={next} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">&gt;</button>
             </div>
-            <span className="text-xs text-slate-400">Mês</span>
+            <span className="text-xs text-slate-400">Arraste para mover</span>
           </div>
 
-          {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-slate-100">
             {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
               <div key={d} className="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider py-2">{d}</div>
             ))}
           </div>
 
-          {/* Day cells */}
           <div className="grid grid-cols-7">
             {cells.map((day, idx) => {
               const dayIssues = day ? (issuesByDay[day] || []) : [];
               const isToday = isCurrentMonth && day === todayDay;
+              const isDragTarget = day === dragOverDay;
               return (
-                <div key={idx} className={`min-h-[100px] border-b border-r border-slate-100 p-1.5 ${day ? 'bg-white' : 'bg-slate-50/50'} ${isToday ? 'bg-blue-50/50' : ''}`}>
+                <div key={idx}
+                  className={`min-h-[100px] border-b border-r border-slate-100 p-1.5 transition-colors duration-150
+                    ${day ? 'bg-white' : 'bg-slate-50/50'}
+                    ${isToday ? 'bg-blue-50/50' : ''}
+                    ${isDragTarget ? 'bg-blue-100 ring-2 ring-inset ring-blue-400' : ''}`}
+                  onDragOver={e => { if (day) { e.preventDefault(); setDragOverDay(day); } }}
+                  onDragLeave={() => setDragOverDay(null)}
+                  onDrop={e => { if (day) handleDropOnDay(day, e); }}
+                >
                   {day && (
                     <>
-                      <span className={`text-xs font-medium ${isToday ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-slate-500'}`}>
+                      <span className={`text-xs font-medium inline-flex items-center justify-center ${isToday ? 'bg-blue-600 text-white w-6 h-6 rounded-full' : 'text-slate-500'}`}>
                         {day}
                       </span>
                       <div className="mt-1 space-y-0.5">
                         {dayIssues.slice(0, 3).map(i => (
-                          <button key={i.key} onClick={() => onOpenPanel(i)}
-                            className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate font-medium transition-colors ${statusCls(i.status)} hover:opacity-80`}>
+                          <div key={i.key}
+                            draggable
+                            onDragStart={e => {
+                              e.dataTransfer.setData('text/plain', i.key);
+                              e.dataTransfer.effectAllowed = 'move';
+                              (e.currentTarget as HTMLElement).style.opacity = '0.4';
+                            }}
+                            onDragEnd={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                            onClick={ev => { ev.stopPropagation(); onOpenPanel(i); }}
+                            className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate font-medium transition-colors cursor-grab active:cursor-grabbing ${statusCls(i.status)} hover:opacity-80`}>
                             {i.summary}
-                          </button>
+                          </div>
                         ))}
                         {dayIssues.length > 3 && (
                           <span className="text-[9px] text-slate-400 px-1.5">+{dayIssues.length - 3} mais</span>
@@ -742,15 +800,28 @@ function CalendarioView({ issues, onOpenPanel }: {
         </div>
       </div>
 
-      {/* Sidebar: unscheduled */}
+      {/* Sidebar: unscheduled — also a drop zone to remove duedate */}
       <div className="w-72 flex-shrink-0">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div className={`bg-white rounded-xl border shadow-sm p-4 transition-all duration-150
+          ${dragOverSidebar ? 'border-amber-400 ring-2 ring-amber-200 bg-amber-50/30' : 'border-slate-200'}`}
+          onDragOver={e => { e.preventDefault(); setDragOverSidebar(true); }}
+          onDragLeave={() => setDragOverSidebar(false)}
+          onDrop={handleDropOnSidebar}
+        >
           <h3 className="text-sm font-semibold text-slate-700 mb-1">Trabalho não agendado</h3>
-          <p className="text-[10px] text-slate-400 mb-3">Issues sem data de entrega</p>
+          <p className="text-[10px] text-slate-400 mb-3">{dragOverSidebar ? 'Solte para remover data' : 'Arraste para o calendário'}</p>
           <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto">
             {unscheduled.map(i => (
-              <button key={i.key} onClick={() => onOpenPanel(i)}
-                className="w-full text-left p-2.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
+              <div key={i.key}
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('text/plain', i.key);
+                  e.dataTransfer.effectAllowed = 'move';
+                  (e.currentTarget as HTMLElement).style.opacity = '0.4';
+                }}
+                onDragEnd={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                onClick={() => onOpenPanel(i)}
+                className="w-full text-left p-2.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group cursor-grab active:cursor-grabbing">
                 <p className="text-xs font-medium text-slate-700 leading-snug line-clamp-2 group-hover:text-blue-700">{i.summary}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="font-mono text-[10px] text-blue-600 font-bold">{i.key}</span>
@@ -758,7 +829,7 @@ function CalendarioView({ issues, onOpenPanel }: {
                   <span className={`text-[10px] font-bold ${PRIORITY_CLS[i.priority] ?? 'text-slate-400'}`}>{PRIORITY_ICON[i.priority]}</span>
                   {i.assigneeAvatar && <img src={i.assigneeAvatar} alt="" className="w-4 h-4 rounded-full ml-auto" />}
                 </div>
-              </button>
+              </div>
             ))}
             {unscheduled.length === 0 && (
               <p className="text-xs text-slate-400 text-center py-4">Todos os issues têm data ✓</p>
@@ -1012,6 +1083,15 @@ export function Bira() {
     setPanelDetail(prev => prev ? { ...prev, comments: [...prev.comments, comment] } : prev);
   }
 
+  function handleDuedateChange(key: string, newDate: string | null) {
+    setIssues(prev => prev.map(i => i.key === key ? { ...i, duedate: newDate } : i));
+    fetch('/api/jira-update', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, fields: { duedate: newDate } }),
+    });
+  }
+
   async function handleCreated(newKey: string) {
     setShowCreate(false);
     await load();
@@ -1176,7 +1256,7 @@ export function Bira() {
 
         {/* ── CALENDÁRIO ── */}
         {aba === 'calendario' && (
-          <CalendarioView issues={filtrados} onOpenPanel={openPanel} />
+          <CalendarioView issues={filtrados} onOpenPanel={openPanel} onDuedateChange={handleDuedateChange} />
         )
 
         }
@@ -1186,14 +1266,36 @@ export function Bira() {
           <CronogramaView issues={filtrados} onOpenPanel={openPanel} />
         )}
 
-        {/* ── QUADRO ── */}
+        {/* ── QUADRO (drag & drop entre colunas) ── */}
         {aba === 'quadro' && (
           <div className="p-4 overflow-x-auto">
             <div className="flex gap-3 min-w-max pb-4">
               {COLUNAS_QUADRO.map(col => {
                 const items = filtrados.filter(i => i.status === col.status);
+                const transition = TRANSITIONS.find(t => t.name === col.status);
                 return (
-                  <div key={col.status} className={`w-64 flex flex-col rounded-xl border-2 ${col.cor}`}>
+                  <div key={col.status}
+                    className={`w-64 flex flex-col rounded-xl border-2 transition-all duration-200 ${col.cor}`}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'scale-[1.02]'); }}
+                    onDragLeave={e => { e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'scale-[1.02]'); }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'scale-[1.02]');
+                      const issueKey = e.dataTransfer.getData('text/plain');
+                      if (issueKey && transition) {
+                        const issue = filtrados.find(i => i.key === issueKey);
+                        if (issue && issue.status !== col.status) {
+                          handleStatusChange(issueKey, transition);
+                          // Fire Jira API transition
+                          fetch('/api/jira-transition', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key: issueKey, transitionId: transition.id }),
+                          });
+                        }
+                      }
+                    }}
+                  >
                     <div className="flex items-center gap-2 px-3 py-2.5">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot(col.status)}`} />
                       <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex-1">{col.titulo}</h3>
@@ -1208,8 +1310,20 @@ export function Bira() {
                         const TypeIcon = ISSUE_TYPE_ICON[issue.issuetype] || CheckSquare;
                         const isConcluido = issue.status === 'Concluído';
                         return (
-                          <div key={issue.key} onClick={() => openPanel(issue)}
-                            className="bg-white rounded-xl border border-slate-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group">
+                          <div key={issue.key}
+                            draggable
+                            onDragStart={e => {
+                              e.dataTransfer.setData('text/plain', issue.key);
+                              e.dataTransfer.effectAllowed = 'move';
+                              (e.currentTarget as HTMLElement).style.opacity = '0.5';
+                              (e.currentTarget as HTMLElement).style.transform = 'rotate(2deg) scale(1.05)';
+                            }}
+                            onDragEnd={e => {
+                              (e.currentTarget as HTMLElement).style.opacity = '1';
+                              (e.currentTarget as HTMLElement).style.transform = '';
+                            }}
+                            onClick={() => openPanel(issue)}
+                            className="bg-white rounded-xl border border-slate-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-grab active:cursor-grabbing group">
                             <div className="flex items-center justify-between mb-1.5">
                               <div className="flex items-center gap-1.5">
                                 <TypeIcon size={11} className="text-slate-400 flex-shrink-0" />
