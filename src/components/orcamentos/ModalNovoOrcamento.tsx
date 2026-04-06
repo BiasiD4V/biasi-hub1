@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { clientesRepository, type ClienteSupabase } from '../../infrastructure/supabase/clientesRepository';
 import { propostasRepository } from '../../infrastructure/supabase/propostasRepository';
 import { responsaveisComerciaisRepository, type ResponsavelComercial } from '../../infrastructure/supabase/responsaveisComerciaisRepository';
+import { supabase } from '../../infrastructure/supabase/client';
 import { Search, Loader2, X } from 'lucide-react';
 
 interface ModalNovoOrcamentoProps {
@@ -36,11 +37,23 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  // ── Responsáveis do config ──
+  // ── Responsáveis do config (para campo Responsável) ──
   const [responsaveis, setResponsaveis] = useState<ResponsavelComercial[]>([]);
+  // ── Membros comerciais do sistema (para campo Responsável Comercial) ──
+  const [membrosComercial, setMembrosComercial] = useState<{ id: string; nome: string }[]>([]);
+
   useEffect(() => {
     responsaveisComerciaisRepository.listarTodos()
       .then((r) => setResponsaveis(r.filter((x) => x.ativo)))
+      .catch(() => {});
+
+    supabase
+      .from('usuarios')
+      .select('id, nome')
+      .eq('papel', 'comercial')
+      .eq('ativo', true)
+      .order('nome')
+      .then(({ data }) => setMembrosComercial(data ?? []))
       .catch(() => {});
   }, []);
 
@@ -339,8 +352,8 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
               className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="">Selecionar...</option>
-              {responsaveis.map((r) => (
-                <option key={r.id} value={r.nome}>{r.nome}</option>
+              {membrosComercial.map((m) => (
+                <option key={m.id} value={m.nome}>{m.nome}</option>
               ))}
             </select>
           </div>
