@@ -358,6 +358,14 @@ export const propostasRepository = {
     return data
   },
 
+  async deletar(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('propostas')
+      .delete()
+      .eq('id', id)
+    if (error) throw error
+  },
+
   // === Mudanças de Etapa ===
 
   async listarMudancasEtapa(propostaId: string): Promise<MudancaEtapaRow[]> {

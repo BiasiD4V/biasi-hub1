@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Building, Tag, Clock, CheckCircle, XCircle, FolderOpen, Edit2, Save, X, Copy } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Building, Tag, Clock, CheckCircle, XCircle, FolderOpen, Edit2, Save, X, Copy, Trash2 } from 'lucide-react';
 import { useNovoOrcamento } from '../context/NovoOrcamentoContext';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadgeNovo } from '../components/ui/StatusBadgeNovo';
@@ -217,6 +217,8 @@ export function OrcamentoDetalhe() {
   const [modalFollowUpAberto, setModalFollowUpAberto] = useState(false);
   const [modalPendenciaAberto, setModalPendenciaAberto] = useState(false);
   const [editandoLink, setEditandoLink] = useState(false);
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [linkInput, setLinkInput] = useState('');
 
   // Tentar do mock primeiro
@@ -480,8 +482,48 @@ export function OrcamentoDetalhe() {
             </div>
           );
         })()}
-        <div className="ml-auto flex-shrink-0">
+        <div className="ml-auto flex items-center gap-3 flex-shrink-0">
           <AlertasOrcamento orc={orc} />
+          {usuario?.papel && ['dono', 'admin', 'gestor'].includes(usuario.papel) && isSupa && (
+            confirmarExclusao ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-600 font-medium">Excluir orçamento?</span>
+                <button
+                  onClick={async () => {
+                    if (!id) return;
+                    setExcluindo(true);
+                    try {
+                      await propostasRepository.deletar(id);
+                      navigate('/orcamentos');
+                    } catch {
+                      setExcluindo(false);
+                      setConfirmarExclusao(false);
+                    }
+                  }}
+                  disabled={excluindo}
+                  className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {excluindo ? 'Excluindo...' : 'Confirmar'}
+                </button>
+                <button
+                  onClick={() => setConfirmarExclusao(false)}
+                  disabled={excluindo}
+                  className="px-3 py-1.5 text-xs font-medium border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmarExclusao(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                title="Excluir orçamento"
+              >
+                <Trash2 size={13} />
+                Excluir
+              </button>
+            )
+          )}
         </div>
       </div>
 
