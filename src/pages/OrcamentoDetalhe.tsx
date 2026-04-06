@@ -459,34 +459,34 @@ export function OrcamentoDetalhe() {
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
-      <div className="px-8 py-4 border-b border-slate-200 bg-white flex items-center gap-4">
+      <div className="px-3 py-3 sm:px-8 sm:py-4 border-b border-slate-200 bg-white flex items-center gap-2 sm:gap-4">
         <button
           onClick={() => navigate('/orcamentos')}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-700 text-sm transition-colors flex-shrink-0"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm transition-colors flex-shrink-0"
         >
           <ArrowLeft size={16} />
-          Voltar
+          <span className="hidden sm:inline">Voltar</span>
         </button>
-        <span className="text-slate-300">|</span>
-        <span className="font-mono text-sm text-slate-500 flex-shrink-0">{orc.numero}</span>
+        <span className="text-slate-300 hidden sm:inline">|</span>
+        <span className="font-mono text-xs sm:text-sm text-slate-500 flex-shrink-0">{orc.numero}</span>
         <StatusBadgeNovo
           status={orc.status as StatusRevisao | 'rascunho'}
           label={orc.statusLabel}
         />
-        <h1 className="text-lg font-bold text-slate-800 truncate">{orc.titulo}</h1>
-        {/* Badge A/B/C */}
+        <h1 className="text-sm sm:text-lg font-bold text-slate-800 truncate">{orc.titulo}</h1>
+        {/* Badge A/B/C — hidden on very small screens */}
         {(() => {
           const abc = calcularScoreABC(orc);
           if (!abc) return null;
           const cfg = PRIORIDADE_ABC_CONFIG[abc.classe];
           return (
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border flex-shrink-0 ${cfg.bg} ${cfg.border}`}>
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border flex-shrink-0 ${cfg.bg} ${cfg.border}`}>
               <span className={`text-base font-bold leading-none ${cfg.text}`}>{abc.classe}</span>
               <span className={`text-xs font-medium ${cfg.text}`}>{abc.score}/10</span>
             </div>
           );
         })()}
-        <div className="ml-auto flex items-center gap-3 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <AlertasOrcamento orc={orc} />
           {usuario?.papel && ['dono', 'admin', 'gestor'].includes(usuario.papel) && isSupa && (
             confirmarExclusao ? (
@@ -536,7 +536,7 @@ export function OrcamentoDetalhe() {
 
       {/* Meta strip */}
       <div
-        className={`px-8 py-3 border-b border-slate-200 ${
+        className={`px-3 py-2 sm:px-8 sm:py-3 border-b border-slate-200 ${
           orc.resultadoComercial === 'ganho'
             ? 'bg-green-50'
             : orc.resultadoComercial === 'perdido'
@@ -544,7 +544,7 @@ export function OrcamentoDetalhe() {
             : 'bg-slate-50'
         }`}
       >
-        <div className="flex items-center gap-8 text-sm flex-wrap">
+        <div className="flex items-center gap-3 sm:gap-8 text-sm flex-wrap overflow-x-auto no-scrollbar">
           {/* Resultado comercial — destaque quando fechado */}
           {orc.resultadoComercial === 'ganho' && (
             <div className="flex items-center gap-2">
@@ -619,7 +619,7 @@ export function OrcamentoDetalhe() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 p-3 sm:p-8 overflow-y-auto">
         {/* Banner de alertas operacionais — visível apenas quando em andamento */}
         {(() => {
           const prioridade = calcularPrioridade(orc);

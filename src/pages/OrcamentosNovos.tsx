@@ -163,53 +163,56 @@ export function OrcamentosNovos() {
   return (
     <div className="flex flex-col h-full">
       {/* Cabeçalho */}
-      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Orçamentos</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {visualizacao === 'lista'
-              ? `${propostasTotal.toLocaleString('pt-BR')} proposta(s) registrada(s)`
-              : `${orcamentos.length} orçamento${orcamentos.length !== 1 ? 's' : ''} no funil`}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-100 rounded-lg p-1">
+      <div className="px-4 py-3 sm:px-8 sm:py-6 border-b border-slate-200 bg-white">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Orçamentos</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              {visualizacao === 'lista'
+                ? `${propostasTotal.toLocaleString('pt-BR')} proposta(s)`
+                : `${orcamentos.length} orçamento${orcamentos.length !== 1 ? 's' : ''} no funil`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+              <button
+                onClick={() => setVisualizacao('lista')}
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  visualizacao === 'lista'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <List size={14} />
+                <span className="hidden sm:inline">Lista</span>
+              </button>
+              <button
+                onClick={() => setVisualizacao('kanban')}
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  visualizacao === 'kanban'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <LayoutGrid size={14} />
+                <span className="hidden sm:inline">Kanban</span>
+              </button>
+            </div>
+
             <button
-              onClick={() => setVisualizacao('lista')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                visualizacao === 'lista'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
+              onClick={() => setModalAberto(true)}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors shadow-sm"
             >
-              <List size={14} />
-              Lista
-            </button>
-            <button
-              onClick={() => setVisualizacao('kanban')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                visualizacao === 'kanban'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <LayoutGrid size={14} />
-              Kanban
+              <PlusCircle size={16} />
+              <span className="hidden sm:inline">Novo Orçamento</span>
+              <span className="sm:hidden">Novo</span>
             </button>
           </div>
-
-          <button
-            onClick={() => setModalAberto(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm"
-          >
-            <PlusCircle size={16} />
-            Novo Orçamento
-          </button>
         </div>
       </div>
 
       {/* Corpo */}
-      <div className={`flex-1 p-8 ${visualizacao === 'kanban' ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
+      <div className={`flex-1 ${visualizacao === 'kanban' ? 'p-4 sm:p-6 overflow-hidden flex flex-col' : 'p-3 sm:p-6 overflow-auto'}`}>
 
         {/* ══════ KANBAN ══════ */}
         {visualizacao === 'kanban' && (
@@ -234,41 +237,41 @@ export function OrcamentosNovos() {
         {visualizacao === 'lista' && (
           <div>
             {/* KPIs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-                <div className="bg-blue-50 p-2 rounded-lg"><BarChart2 size={20} className="text-blue-600" /></div>
-                <div>
-                  <p className="text-xs text-slate-500">Total de Propostas</p>
-                  <p className="text-xl font-bold text-slate-800">{kpis.total.toLocaleString('pt-BR')}</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                <div className="bg-blue-50 p-1.5 sm:p-2 rounded-lg flex-shrink-0"><BarChart2 size={18} className="text-blue-600" /></div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">Total</p>
+                  <p className="text-lg sm:text-xl font-bold text-slate-800">{kpis.total.toLocaleString('pt-BR')}</p>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-                <div className="bg-green-50 p-2 rounded-lg"><CheckCircle size={20} className="text-green-600" /></div>
-                <div>
-                  <p className="text-xs text-slate-500">Fechadas</p>
-                  <p className="text-xl font-bold text-slate-800">{kpis.fechadas.toLocaleString('pt-BR')}</p>
+              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                <div className="bg-green-50 p-1.5 sm:p-2 rounded-lg flex-shrink-0"><CheckCircle size={18} className="text-green-600" /></div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">Fechadas</p>
+                  <p className="text-lg sm:text-xl font-bold text-slate-800">{kpis.fechadas.toLocaleString('pt-BR')}</p>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-                <div className="bg-yellow-50 p-2 rounded-lg"><DollarSign size={20} className="text-yellow-600" /></div>
-                <div>
-                  <p className="text-xs text-slate-500">Valor Total Orçado</p>
-                  <p className="text-lg font-bold text-slate-800">{formatarMoeda(kpis.valorTotal, true)}</p>
+              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                <div className="bg-yellow-50 p-1.5 sm:p-2 rounded-lg flex-shrink-0"><DollarSign size={18} className="text-yellow-600" /></div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">Valor Orçado</p>
+                  <p className="text-sm sm:text-lg font-bold text-slate-800">{formatarMoeda(kpis.valorTotal, true)}</p>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-                <div className="bg-purple-50 p-2 rounded-lg"><TrendingUp size={20} className="text-purple-600" /></div>
-                <div>
-                  <p className="text-xs text-slate-500">Taxa de Fechamento</p>
-                  <p className="text-xl font-bold text-slate-800">{taxaFechamento}%</p>
+              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                <div className="bg-purple-50 p-1.5 sm:p-2 rounded-lg flex-shrink-0"><TrendingUp size={18} className="text-purple-600" /></div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">Fechamento</p>
+                  <p className="text-lg sm:text-xl font-bold text-slate-800">{taxaFechamento}%</p>
                 </div>
               </div>
             </div>
 
             {/* Filtros */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <div className="flex-1 min-w-[200px]">
+            <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 mb-4">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 items-end">
+                <div className="col-span-2 sm:flex-1 sm:min-w-[200px]">
                   <label className="block text-xs text-slate-500 mb-1">Buscar</label>
                   <div className="relative">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -287,9 +290,9 @@ export function OrcamentosNovos() {
                   <select
                     value={filtroAno ?? ''}
                     onChange={(e) => { setFiltroAno(e.target.value ? Number(e.target.value) : null); setPropostasPagina(0) }}
-                    className="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    <option value="">Todos</option>
+                    <option value="">Todos anos</option>
                     {ANOS_PROPOSTAS.map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </div>
@@ -298,29 +301,29 @@ export function OrcamentosNovos() {
                   <select
                     value={filtroStatus ?? ''}
                     onChange={(e) => { setFiltroStatus(e.target.value || null); setPropostasPagina(0) }}
-                    className="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    <option value="">Todos</option>
+                    <option value="">Todos status</option>
                     {statusOpcoes.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="hidden sm:block">
                   <label className="block text-xs text-slate-500 mb-1">Disciplina</label>
                   <select
                     value={filtroDisciplina ?? ''}
                     onChange={(e) => { setFiltroDisciplina(e.target.value || null); setPropostasPagina(0) }}
-                    className="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
                     <option value="">Todas</option>
                     {disciplinaOpcoes.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="hidden sm:block">
                   <label className="block text-xs text-slate-500 mb-1">Responsável</label>
                   <select
                     value={filtroResponsavel ?? ''}
                     onChange={(e) => { setFiltroResponsavel(e.target.value || null); setPropostasPagina(0) }}
-                    className="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
                     <option value="">Todos</option>
                     {responsavelOpcoes.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -328,13 +331,13 @@ export function OrcamentosNovos() {
                 </div>
                 <button
                   onClick={aplicarBuscaPropostas}
-                  className="py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  className="py-2 px-3 sm:px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Buscar
                 </button>
                 <button
                   onClick={limparFiltros}
-                  className="py-2 px-4 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
+                  className="py-2 px-3 sm:px-4 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
                 >
                   Limpar
                 </button>
@@ -353,8 +356,79 @@ export function OrcamentosNovos() {
               )}
             </div>
 
-            {/* Tabela */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            {/* Cards — mobile only */}
+            <div className="sm:hidden space-y-2">
+              {propostasCarregando ? (
+                <div className="text-center py-12 text-slate-400">
+                  <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
+                  <p className="text-sm">Carregando...</p>
+                </div>
+              ) : propostas.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <FileText size={28} className="mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm">Nenhuma proposta encontrada.</p>
+                </div>
+              ) : (
+                propostas.map((p) => {
+                  const statusCor =
+                    p.status === 'FECHADO' ? 'border-l-green-500' :
+                    p.status === 'ENVIADO' ? 'border-l-blue-500' :
+                    p.status === 'NÃO FECHADO' ? 'border-l-red-500' :
+                    p.status === 'CANCELADO' ? 'border-l-red-400' :
+                    p.status === 'DECLINADO' ? 'border-l-orange-400' :
+                    'border-l-slate-300';
+                  const prio = calcularPrioridadeProposta(p);
+                  const alertas = getAlertasProposta(p);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => navigate(`/orcamentos/${p.id}`)}
+                      className={`bg-white rounded-xl border border-slate-200 border-l-4 ${statusCor} p-3 cursor-pointer active:bg-slate-50`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 text-sm truncate">{p.cliente || '—'}</p>
+                          <p className="text-xs text-slate-500 truncate">{p.obra || '—'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {prio && (
+                            <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${prio.cor}`}>
+                              {prio.label}
+                            </span>
+                          )}
+                          {alertas.length > 0 && (
+                            <AlertTriangle size={13} className="text-amber-500" />
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPropostaEditando(p); }}
+                            className="p-1 text-slate-400 hover:text-blue-600 rounded"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-[10px] text-slate-400">{p.numero_composto}</span>
+                        {p.status && (
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${PROPOSTAS_STATUS_CORES[p.status] || 'bg-slate-100 text-slate-600'}`}>
+                            {p.status}
+                          </span>
+                        )}
+                        {p.disciplina && (
+                          <span className="text-[10px] text-slate-400">{p.disciplina}</span>
+                        )}
+                        {p.valor_orcado ? (
+                          <span className="ml-auto text-xs font-semibold text-slate-700">{formatarMoeda(p.valor_orcado, true)}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Tabela — desktop only */}
+            <div className="hidden sm:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
               {propostasCarregando ? (
                 <div className="text-center py-16 text-slate-400">
                   <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />

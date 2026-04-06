@@ -30,7 +30,7 @@ export function Modal({ aberto, onFechar, titulo, largura = 'lg', children }: Mo
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       role="dialog"
       aria-modal="true"
     >
@@ -42,7 +42,7 @@ export function Modal({ aberto, onFechar, titulo, largura = 'lg', children }: Mo
 
       {/* Painel */}
       <div
-        className={`relative bg-white rounded-xl shadow-2xl w-full mx-4 ${LARGURAS[largura]} max-h-[90vh] flex flex-col pointer-events-auto`}
+        className={`relative bg-white sm:rounded-xl rounded-t-2xl shadow-2xl w-full sm:mx-4 ${LARGURAS[largura]} max-h-[92vh] sm:max-h-[90vh] flex flex-col pointer-events-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho */}
