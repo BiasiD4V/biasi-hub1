@@ -571,7 +571,7 @@ export function OrcamentoDetalhe() {
           {orc.responsavel && (
             <div className="flex items-center gap-2">
               <User size={14} className="text-slate-400 flex-shrink-0" />
-              <span className="text-slate-500 text-xs">Técnico:</span>
+              <span className="text-slate-500 text-xs">Responsável:</span>
               <span className="text-slate-600 text-xs font-medium">{orc.responsavel}</span>
             </div>
           )}
@@ -780,7 +780,7 @@ export function OrcamentoDetalhe() {
                 <div className="flex items-center gap-3">
                   <User size={14} className="text-slate-400 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-slate-400">Responsável Técnico</p>
+                    <p className="text-xs text-slate-400">Responsável</p>
                     <p className="text-sm font-medium text-slate-700">{orc.responsavel || '—'}</p>
                   </div>
                 </div>

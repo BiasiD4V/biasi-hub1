@@ -315,7 +315,7 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Responsável Técnico
+              Responsável
             </label>
             <select
               value={form.responsavel}
