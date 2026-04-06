@@ -223,9 +223,54 @@ function ListaHierarquica({ issues, onOpenPanel, onStatusChange }: {
     );
   }
 
+  /* ── Mobile card list ── */
+  const MobileCardList = () => (
+    <div className="sm:hidden space-y-2 p-3 overflow-y-auto" style={{ maxHeight: 'calc(100svh - 240px)' }}>
+      {roots.length === 0 && (
+        <p className="text-xs text-slate-400 text-center py-10">Nenhum issue encontrado</p>
+      )}
+      {issues.map(issue => {
+        const TypeIcon = ISSUE_TYPE_ICON[issue.issuetype] || CheckSquare;
+        const isConcluido = issue.status === 'Concluído';
+        return (
+          <div key={issue.key}
+            onClick={() => onOpenPanel(issue)}
+            className="bg-white rounded-xl border border-slate-200 p-3 active:bg-slate-50 transition-colors">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <TypeIcon size={12} className="text-slate-400 flex-shrink-0" />
+                <span className="font-mono text-[11px] font-bold text-blue-600 flex-shrink-0">{issue.key}</span>
+                {issue.parentKey && <span className="text-[10px] text-slate-400 truncate">↳ {issue.parentKey}</span>}
+              </div>
+              <span className={`text-[10px] font-bold flex-shrink-0 ${PRIORITY_CLS[issue.priority] ?? 'text-slate-300'}`}>
+                {PRIORITY_ICON[issue.priority] ?? '–'}
+              </span>
+            </div>
+            <p className={`text-sm font-medium mb-2 leading-snug line-clamp-2 ${isConcluido ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+              {issue.summary}
+            </p>
+            <div className="flex items-center gap-2">
+              <StatusDropdown current={issue.status} onSelect={t => { onStatusChange(issue.key, t); }} />
+              {issue.assigneeName && (
+                <div className="flex items-center gap-1 ml-auto">
+                  {issue.assigneeAvatar
+                    ? <img src={issue.assigneeAvatar} alt="" className="w-5 h-5 rounded-full" />
+                    : <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0"><span className="text-[9px] text-white font-bold">{issue.assigneeName.charAt(0)}</span></div>
+                  }
+                  <span className="text-xs text-slate-500">{issue.assigneeName.split(' ')[0]}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="p-4">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="p-0 sm:p-4">
+      <MobileCardList />
+      <div className="hidden sm:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[960px]">
             <thead>
@@ -611,63 +656,134 @@ function QuadroView({ issues, onOpenPanel, onStatusChange, onShowCreate }: {
   onStatusChange: (key: string, t: typeof TRANSITIONS[0]) => void;
   onShowCreate: () => void;
 }) {
+  const [colunaMobile, setColunaMobile] = useState(0);
+  const colAtual = COLUNAS_QUADRO[colunaMobile];
+  const itemsMobile = issues.filter(i => i.status === colAtual.status);
+
   return (
-    <div className="p-4 overflow-x-auto">
-      <div className="flex gap-3 min-w-max pb-4">
-        {COLUNAS_QUADRO.map(col => {
-          const items = issues.filter(i => i.status === col.status);
-          const transition = TRANSITIONS.find(t => t.name === col.status);
+    <div>
+
+      {/* ── Mobile: column selector tabs ── */}
+      <div className="sm:hidden flex-shrink-0 bg-white border-b border-slate-200 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1 px-2 py-2">
+          {COLUNAS_QUADRO.map((col, idx) => {
+            const count = issues.filter(i => i.status === col.status).length;
+            const ativo = colunaMobile === idx;
+            return (
+              <button key={col.status} onClick={() => setColunaMobile(idx)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 transition-colors ${ativo ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDot(col.status)}`} />
+                {col.titulo}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${ativo ? 'bg-white/20 text-white' : col.badge}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Mobile: single column cards ── */}
+      <div className="sm:hidden overflow-y-auto p-3 space-y-2 bg-slate-50" style={{ maxHeight: 'calc(100svh - 280px)' }}>
+        {itemsMobile.length === 0 && (
+          <div className="text-xs text-slate-400 text-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-white">
+            Nenhum issue em {colAtual.titulo}
+          </div>
+        )}
+        {itemsMobile.map(issue => {
+          const TypeIcon = ISSUE_TYPE_ICON[issue.issuetype] || CheckSquare;
+          const isConcluido = issue.status === 'Concluído';
           return (
-            <div key={col.status}
-              className={`w-64 flex flex-col rounded-xl border-2 transition-all duration-200 ${col.cor}`}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'scale-[1.02]'); }}
-              onDragLeave={e => { e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'scale-[1.02]'); }}
-              onDrop={e => {
-                e.preventDefault();
-                e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'scale-[1.02]');
-                const issueKey = e.dataTransfer.getData('text/plain');
-                if (issueKey && transition) {
-                  const issue = issues.find(i => i.key === issueKey);
-                  if (issue && issue.status !== col.status) {
-                    onStatusChange(issueKey, transition);
-                    // Fire Jira API transition
-                    fetchAutenticado('/api/jira-transition', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ key: issueKey, transitionId: transition.id }),
-                    });
-                  }
-                }
-              }}
-            >
-              <div className="flex items-center gap-2 px-3 py-2.5">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot(col.status)}`} />
-                <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex-1">{col.titulo}</h3>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${col.badge}`}>{items.length}</span>
-                <button onClick={() => { onShowCreate(); }}
-                  className="p-0.5 rounded text-slate-300 hover:text-slate-500 transition-colors" title="Criar issue">
-                  <Plus size={13} />
-                </button>
+            <div key={issue.key} onClick={() => onOpenPanel(issue)}
+              className="bg-white rounded-xl border border-slate-200 p-3 active:bg-slate-50 transition-colors shadow-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <TypeIcon size={12} className="text-slate-400 flex-shrink-0" />
+                  <span className="font-mono text-[11px] font-bold text-blue-600">{issue.key}</span>
+                </div>
+                <span className={`text-[10px] font-bold ${PRIORITY_CLS[issue.priority] ?? 'text-slate-300'}`}>
+                  {PRIORITY_ICON[issue.priority] ?? '–'}
+                </span>
               </div>
-              <div className="overflow-y-auto px-2 pb-2 space-y-2 max-h-[calc(100vh-280px)]">
-                {items.map(issue => {
-                  const TypeIcon = ISSUE_TYPE_ICON[issue.issuetype] || CheckSquare;
-                  const isConcluido = issue.status === 'Concluído';
-                  return (
-                    <div key={issue.key}
-                      draggable
-                      onDragStart={e => {
-                        e.dataTransfer.setData('text/plain', issue.key);
-                        e.dataTransfer.effectAllowed = 'move';
-                        (e.currentTarget as HTMLElement).style.opacity = '0.5';
-                        (e.currentTarget as HTMLElement).style.transform = 'rotate(2deg) scale(1.05)';
-                      }}
-                      onDragEnd={e => {
-                        (e.currentTarget as HTMLElement).style.opacity = '1';
-                        (e.currentTarget as HTMLElement).style.transform = '';
-                      }}
-                      onClick={() => onOpenPanel(issue)}
-                      className="bg-white rounded-xl border border-slate-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-grab active:cursor-grabbing group">
+              <p className={`text-sm font-medium mb-2 leading-snug line-clamp-2 ${isConcluido ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                {issue.summary}
+              </p>
+              {issue.parentSummary && (
+                <p className="text-[11px] text-slate-400 truncate mb-2">{issue.parentSummary}</p>
+              )}
+              <div className="flex items-center gap-2">
+                {issue.labels.length > 0 && (
+                  <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">{issue.labels[0]}</span>
+                )}
+                {issue.assigneeName && (
+                  <div className="flex items-center gap-1 ml-auto">
+                    {issue.assigneeAvatar
+                      ? <img src={issue.assigneeAvatar} alt="" className="w-5 h-5 rounded-full" />
+                      : <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0"><span className="text-[9px] text-white font-bold">{issue.assigneeName.charAt(0)}</span></div>
+                    }
+                    <span className="text-xs text-slate-500">{issue.assigneeName.split(' ')[0]}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Desktop: full kanban board ── */}
+      <div className="hidden sm:block p-4 overflow-x-auto">
+        <div className="flex gap-3 min-w-max pb-4">
+          {COLUNAS_QUADRO.map(col => {
+            const items = issues.filter(i => i.status === col.status);
+            const transition = TRANSITIONS.find(t => t.name === col.status);
+            return (
+              <div key={col.status}
+                className={`w-64 flex flex-col rounded-xl border-2 transition-all duration-200 ${col.cor}`}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'scale-[1.02]'); }}
+                onDragLeave={e => { e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'scale-[1.02]'); }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'scale-[1.02]');
+                  const issueKey = e.dataTransfer.getData('text/plain');
+                  if (issueKey && transition) {
+                    const issue = issues.find(i => i.key === issueKey);
+                    if (issue && issue.status !== col.status) {
+                      onStatusChange(issueKey, transition);
+                      fetchAutenticado('/api/jira-transition', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: issueKey, transitionId: transition.id }),
+                      });
+                    }
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot(col.status)}`} />
+                  <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex-1">{col.titulo}</h3>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${col.badge}`}>{items.length}</span>
+                  <button onClick={() => { onShowCreate(); }}
+                    className="p-0.5 rounded text-slate-300 hover:text-slate-500 transition-colors" title="Criar issue">
+                    <Plus size={13} />
+                  </button>
+                </div>
+                <div className="overflow-y-auto px-2 pb-2 space-y-2 max-h-[calc(100vh-280px)]">
+                  {items.map(issue => {
+                    const TypeIcon = ISSUE_TYPE_ICON[issue.issuetype] || CheckSquare;
+                    const isConcluido = issue.status === 'Concluído';
+                    return (
+                      <div key={issue.key}
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.setData('text/plain', issue.key);
+                          e.dataTransfer.effectAllowed = 'move';
+                          (e.currentTarget as HTMLElement).style.opacity = '0.5';
+                          (e.currentTarget as HTMLElement).style.transform = 'rotate(2deg) scale(1.05)';
+                        }}
+                        onDragEnd={e => {
+                          (e.currentTarget as HTMLElement).style.opacity = '1';
+                          (e.currentTarget as HTMLElement).style.transform = '';
+                        }}
+                        onClick={() => onOpenPanel(issue)}
+                        className="bg-white rounded-xl border border-slate-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-grab active:cursor-grabbing group">
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5">
                           <TypeIcon size={11} className="text-slate-400 flex-shrink-0" />
@@ -713,8 +829,10 @@ function QuadroView({ issues, onOpenPanel, onStatusChange, onShowCreate }: {
               </div>
             </div>
           );
-        })}
+          })}
+        </div>
       </div>
+
     </div>
   );
 }
