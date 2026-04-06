@@ -219,6 +219,7 @@ export function OrcamentoDetalhe() {
   const [editandoLink, setEditandoLink] = useState(false);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState('');
   const [linkInput, setLinkInput] = useState('');
 
   // Tentar do mock primeiro
@@ -401,7 +402,9 @@ export function OrcamentoDetalhe() {
   function handleSalvarLink() {
     if (!id) return;
     if (isSupa) {
-      // Supabase propostas não tem linkArquivo — apenas fechar edição
+      propostasRepository.atualizar(id, { link_arquivo: linkInput.trim() || null })
+        .then((p) => { setPropostaSupa(p); })
+        .catch(() => {});
       setEditandoLink(false);
     } else {
       atualizarComercial(id, { linkArquivo: linkInput.trim() });
@@ -487,17 +490,20 @@ export function OrcamentoDetalhe() {
           {usuario?.papel && ['dono', 'admin', 'gestor'].includes(usuario.papel) && isSupa && (
             confirmarExclusao ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-600 font-medium">Excluir orçamento?</span>
+                <span className="text-xs text-red-600 font-medium">
+                  {erroExclusao ? erroExclusao : 'Excluir orçamento?'}
+                </span>
                 <button
                   onClick={async () => {
                     if (!id) return;
                     setExcluindo(true);
+                    setErroExclusao('');
                     try {
                       await propostasRepository.deletar(id);
                       navigate('/orcamentos');
-                    } catch {
+                    } catch (e: any) {
+                      setErroExclusao(e?.message ?? 'Erro ao excluir');
                       setExcluindo(false);
-                      setConfirmarExclusao(false);
                     }
                   }}
                   disabled={excluindo}
