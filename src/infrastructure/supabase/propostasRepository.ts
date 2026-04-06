@@ -1,4 +1,4 @@
-import { supabase } from './client'
+import { supabase, sanitizeFilterValue } from './client'
 
 export interface PropostaSupabase {
   id: string
@@ -100,8 +100,9 @@ export const propostasRepository = {
     }
 
     if (filtros.busca) {
+      const b = sanitizeFilterValue(filtros.busca)
       query = query.or(
-        `cliente.ilike.%${filtros.busca}%,objeto.ilike.%${filtros.busca}%,numero_composto.ilike.%${filtros.busca}%,obra.ilike.%${filtros.busca}%`
+        `cliente.ilike.%${b}%,objeto.ilike.%${b}%,numero_composto.ilike.%${b}%,obra.ilike.%${b}%`
       )
     }
     if (filtros.status) query = query.eq('status', filtros.status)
@@ -295,6 +296,45 @@ export const propostasRepository = {
     if (e2) throw e2
 
     return { total, fechadas, valorTotal, porAno, porStatus, porResponsavel, porDisciplina, recentes: recentes || [] }
+  },
+
+  async criar(dados: {
+    obra: string;
+    cliente: string;
+    tipo: string | null;
+    disciplina: string | null;
+    data_entrada: string;
+    responsavel: string;
+  }): Promise<PropostaSupabase> {
+    const ano = new Date().getFullYear();
+
+    // Conta propostas do ano para gerar número sequencial
+    const { count } = await supabase
+      .from('propostas')
+      .select('*', { count: 'exact', head: true })
+      .gte('data_entrada', `${ano}-01-01`)
+    const seq = (count ?? 0) + 1;
+    const numero_composto = `ORC-${ano}-${String(seq).padStart(3, '0')}`;
+
+    const { data, error } = await supabase
+      .from('propostas')
+      .insert({
+        numero_composto,
+        obra: dados.obra,
+        cliente: dados.cliente,
+        tipo: dados.tipo,
+        disciplina: dados.disciplina,
+        data_entrada: dados.data_entrada,
+        responsavel: dados.responsavel,
+        status: 'EM_ABERTO',
+        ano,
+        etapa_funil: 'entrada_oportunidade',
+        resultado_comercial: 'em_andamento',
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return data
   },
 
   async atualizar(id: string, dados: Partial<Omit<PropostaSupabase, 'id' | 'created_at'>>): Promise<PropostaSupabase> {

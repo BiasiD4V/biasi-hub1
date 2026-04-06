@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { useCadastrosMestres } from '../../context/CadastrosMestresContext';
-import { useNovoOrcamento, type CriarOrcamentoInput } from '../../context/NovoOrcamentoContext';
+import type { CriarOrcamentoInput } from '../../context/NovoOrcamentoContext';
 import { useAuth } from '../../context/AuthContext';
 import { clientesRepository, type ClienteSupabase } from '../../infrastructure/supabase/clientesRepository';
+import { propostasRepository } from '../../infrastructure/supabase/propostasRepository';
 import { Search, Loader2, X } from 'lucide-react';
 
 interface ModalNovoOrcamentoProps {
@@ -23,7 +24,6 @@ const CAMPOS_VAZIOS: CriarOrcamentoInput = {
 
 export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrcamentoProps) {
   const { tiposObra, disciplinas } = useCadastrosMestres();
-  const { criarOrcamento } = useNovoOrcamento();
   const { usuario } = useAuth();
 
   const [form, setForm] = useState<CriarOrcamentoInput>({
@@ -135,11 +135,28 @@ export function ModalNovoOrcamento({ aberto, onFechar, onCriado }: ModalNovoOrca
     }
 
     setSalvando(true);
-    await new Promise<void>((r) => setTimeout(r, 400));
-    const id = criarOrcamento(form);
-    setSalvando(false);
-    resetar();
-    onCriado(id);
+    try {
+      const tipoNome = tiposObra.find((t) => t.id === form.tiposObraIds[0])?.nome ?? null;
+      const disciplinaNomes = form.disciplinaIds
+        .map((did) => disciplinas.find((d) => d.id === did)?.nome ?? did)
+        .join(', ');
+
+      const proposta = await propostasRepository.criar({
+        obra: form.titulo.trim(),
+        cliente: clienteSelecionado?.nome_fantasia ?? clienteSelecionado?.nome ?? '',
+        tipo: tipoNome,
+        disciplina: disciplinaNomes || null,
+        data_entrada: form.dataBase,
+        responsavel: form.responsavel.trim() || usuario?.nome || '',
+      });
+
+      resetar();
+      onCriado(proposta.id);
+    } catch {
+      setErro('Erro ao criar orçamento. Verifique a conexão e tente novamente.');
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
