@@ -98,18 +98,22 @@ interface SidebarProps {
 
 export function SidebarAutenticada({ onNavigate, onAbrirPaulo, onAbrirChat, unreadCount = 0 }: SidebarProps) {
   const { usuario, logout } = useAuth();
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [jaInstalado, setJaInstalado] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(() => (window as any).__pwaInstallPrompt ?? null);
+  const [jaInstalado, setJaInstalado] = useState(() => window.matchMedia('(display-mode: standalone)').matches);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
+    // Caso o evento já tenha sido capturado antes do React montar
+    if ((window as any).__pwaInstallPrompt) setInstallPrompt((window as any).__pwaInstallPrompt);
+
+    const onReady = () => setInstallPrompt((window as any).__pwaInstallPrompt);
+    const onInstalled = () => { setJaInstalado(true); setInstallPrompt(null); };
+
+    window.addEventListener('pwaInstallReady', onReady);
+    window.addEventListener('pwaInstalled', onInstalled);
+    return () => {
+      window.removeEventListener('pwaInstallReady', onReady);
+      window.removeEventListener('pwaInstalled', onInstalled);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => setJaInstalado(true));
-    if (window.matchMedia('(display-mode: standalone)').matches) setJaInstalado(true);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   async function instalarApp() {
