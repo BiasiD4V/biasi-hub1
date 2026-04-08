@@ -1,4 +1,5 @@
 import { supabase, sanitizeFilterValue } from './client'
+import type { Pendencia } from '../../domain/entities/Pendencia'
 
 export interface PropostaSupabase {
   id: string
@@ -65,6 +66,43 @@ export interface FollowUpRow {
   data_proxima_acao: string | null
   arquivo: string | null
   created_at: string
+}
+
+type PendenciaRowFlex = {
+  id?: string
+  proposta_id?: string | null
+  orcamento_id?: string | null
+  titulo?: string | null
+  descricao?: string | null
+  status?: string | null
+  resolvida?: boolean | null
+  prazo?: string | null
+  responsavel?: string | null
+  criado_por?: string | null
+  created_at?: string | null
+  criado_em?: string | null
+}
+
+function normalizarStatusPendencia(status?: string | null, resolvida?: boolean | null): Pendencia['status'] {
+  const s = (status || '').toLowerCase()
+  if (s === 'resolvida' || s === 'resolved' || s === 'concluida' || s === 'concluída') return 'resolvida'
+  if (s === 'cancelada' || s === 'cancelado' || s === 'canceled' || s === 'cancelled') return 'cancelada'
+  if (typeof resolvida === 'boolean') return resolvida ? 'resolvida' : 'aberta'
+  return 'aberta'
+}
+
+function rowParaPendencia(r: PendenciaRowFlex): Pendencia {
+  const prazoRaw = (r.prazo || '').toString()
+  const prazo = prazoRaw.includes('T') ? prazoRaw.slice(0, 10) : prazoRaw
+  return {
+    id: String(r.id || `pend-${Date.now()}`),
+    orcamentoId: String(r.proposta_id || r.orcamento_id || ''),
+    descricao: String(r.descricao || r.titulo || ''),
+    status: normalizarStatusPendencia(r.status, r.resolvida),
+    responsavel: String(r.responsavel || r.criado_por || 'Usuário'),
+    prazo,
+    criadaEm: String(r.created_at || r.criado_em || new Date().toISOString()),
+  }
 }
 
 function extrairAnoProposta(row: Pick<PropostaSupabase, 'numero_composto' | 'data_entrada' | 'ano'>): number | null {
@@ -217,6 +255,24 @@ export const propostasRepository = {
     return ([...new Set((data || []).map((r) => r.responsavel).filter(Boolean))] as string[]).sort()
   },
 
+  async listarClientes(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('nome_interno, nome, ativo')
+      .eq('ativo', true)
+      .order('nome')
+
+    if (!error && data && data.length > 0) {
+      return data
+        .map((r: any) => (r.nome_interno || r.nome) as string | null)
+        .filter(Boolean) as string[]
+    }
+
+    // Fallback histórico se tabela clientes estiver vazia
+    const { data: hist } = await supabase.from('propostas').select('cliente')
+    return ([...new Set((hist || []).map((r) => r.cliente).filter(Boolean))] as string[]).sort()
+  },
+
   async buscarDadosDashboard(): Promise<{
     total: number
     fechadas: number
@@ -307,7 +363,10 @@ export const propostasRepository = {
     responsavel: string;
     responsavel_comercial?: string | null;
   }): Promise<PropostaSupabase> {
-    const ano = new Date().getFullYear();
+    // Sempre deriva o ano da data_entrada para evitar bug na virada do ano
+    const ano = dados.data_entrada
+      ? new Date(dados.data_entrada).getFullYear()
+      : new Date().getFullYear();
 
     // Conta propostas do ano para gerar número sequencial
     const { count } = await supabase
@@ -428,6 +487,89 @@ export const propostasRepository = {
       .eq('id', id)
     if (error) { console.error('deletarFollowUp:', error); return false }
     return true
+  },
+
+  // === Pendências (compatível com schema novo e legado) ===
+
+  async listarPendencias(orcamentoId: string): Promise<Pendencia[]> {
+    const tentativas = [
+      () => supabase.from('pendencias').select('*').eq('proposta_id', orcamentoId),
+      () => supabase.from('pendencias').select('*').eq('orcamento_id', orcamentoId),
+    ]
+
+    let ultimoErro: unknown = null
+    for (const tentar of tentativas) {
+      const { data, error } = await tentar()
+      if (!error) {
+        return ((data || []) as PendenciaRowFlex[])
+          .map(rowParaPendencia)
+          .sort((a, b) => b.criadaEm.localeCompare(a.criadaEm))
+      }
+      ultimoErro = error
+    }
+
+    if (ultimoErro) console.error('listarPendencias:', ultimoErro)
+    return []
+  },
+
+  async inserirPendencia(
+    pendencia: Pick<Pendencia, 'orcamentoId' | 'descricao' | 'status' | 'responsavel' | 'prazo'>
+  ): Promise<Pendencia | null> {
+    const payloadNovo = {
+      proposta_id: pendencia.orcamentoId,
+      descricao: pendencia.descricao,
+      status: pendencia.status,
+      prazo: pendencia.prazo || null,
+      responsavel: pendencia.responsavel || '',
+    }
+
+    const payloadLegado = {
+      orcamento_id: pendencia.orcamentoId,
+      titulo: pendencia.descricao,
+      descricao: pendencia.descricao,
+      responsavel: pendencia.responsavel || '',
+      prazo: pendencia.prazo || null,
+      resolvida: pendencia.status === 'resolvida',
+    }
+
+    const tentativas = [payloadNovo, payloadLegado]
+    let ultimoErro: unknown = null
+
+    for (const payload of tentativas) {
+      const { data, error } = await supabase
+        .from('pendencias')
+        .insert(payload)
+        .select('*')
+        .single()
+
+      if (!error && data) return rowParaPendencia(data as PendenciaRowFlex)
+      ultimoErro = error
+    }
+
+    if (ultimoErro) console.error('inserirPendencia:', ultimoErro)
+    return null
+  },
+
+  async resolverPendencia(pendenciaId: string): Promise<boolean> {
+    const tentativas = [
+      { status: 'resolvida', resolvido_em: new Date().toISOString() },
+      { status: 'resolvida' },
+      { resolvida: true },
+    ]
+
+    let ultimoErro: unknown = null
+    for (const payload of tentativas) {
+      const { error } = await supabase
+        .from('pendencias')
+        .update(payload)
+        .eq('id', pendenciaId)
+
+      if (!error) return true
+      ultimoErro = error
+    }
+
+    if (ultimoErro) console.error('resolverPendencia:', ultimoErro)
+    return false
   },
 
   async atualizarMudancaEtapa(id: string, dados: Partial<Omit<MudancaEtapaRow, 'id' | 'created_at'>>): Promise<boolean> {

@@ -35,26 +35,55 @@ export function DashboardBI() {
   });
   const [abaTabela, setAbaTabela] = useState<'todas' | 'fechadas' | 'perdidas'>('todas');
 
+  const [clientesAtivos, setClientesAtivos] = useState<string[]>([]);
+  const [responsaveisAtivos, setResponsaveisAtivos] = useState<string[]>([]);
+  const [disciplinasAtivas, setDisciplinasAtivas] = useState<string[]>([]);
+
   // ── Buscar dados ──
   const carregarDados = useCallback(async () => {
     setCarregando(true);
-    const { data, error } = await supabase
-      .from('propostas')
-      .select('*')
-      .order('data_entrada', { ascending: false });
-    if (!error && data) setRows(data);
+    const [propostasRes, clientesRes, responsaveisRes, disciplinasRes] = await Promise.all([
+      supabase.from('propostas').select('*').order('data_entrada', { ascending: false }),
+      supabase.from('clientes').select('nome_interno, nome').eq('ativo', true).order('nome'),
+      supabase.from('responsaveis_comerciais').select('nome').eq('ativo', true).order('nome'),
+      supabase.from('disciplinas').select('nome').eq('ativa', true).order('nome'),
+    ]);
+    if (!propostasRes.error && propostasRes.data) setRows(propostasRes.data);
+    if (!clientesRes.error && clientesRes.data)
+      setClientesAtivos(clientesRes.data.map((c: any) => c.nome_interno || c.nome).filter(Boolean));
+    if (!responsaveisRes.error && responsaveisRes.data)
+      setResponsaveisAtivos(responsaveisRes.data.map((r: any) => r.nome).filter(Boolean));
+    if (!disciplinasRes.error && disciplinasRes.data)
+      setDisciplinasAtivas(disciplinasRes.data.map((d: any) => d.nome).filter(Boolean));
     setCarregando(false);
   }, []);
 
   useEffect(() => { carregarDados(); }, [carregarDados]);
 
+  // ── Extrai ano de uma proposta (usa data_entrada como fallback) ──
+  function anoRow(r: PropostaRow): number | null {
+    if (r.ano) return r.ano;
+    if (r.data_entrada) {
+      const a = new Date(r.data_entrada).getFullYear();
+      return isNaN(a) ? null : a;
+    }
+    return null;
+  }
+
   // ── Opções dos filtros ──
   const opcoes = useMemo(() => {
-    const anos = [...new Set(rows.map(r => r.ano).filter(Boolean))].sort((a, b) => b! - a!) as number[];
+    const anos = [...new Set(rows.map(r => anoRow(r)).filter(Boolean))].sort((a, b) => b! - a!) as number[];
     const status = [...new Set(rows.map(r => r.status || 'SEM STATUS'))].sort();
-    const responsaveis = [...new Set(rows.map(r => r.responsavel).filter(Boolean))].sort() as string[];
-    const disciplinas = [...new Set(rows.map(r => r.disciplina).filter(Boolean))].sort() as string[];
-    const clientes = [...new Set(rows.map(r => r.cliente).filter(Boolean))].sort() as string[];
+    // Usa cadastros ativos; fallback para dados históricos das propostas se cadastro vazio
+    const responsaveis = responsaveisAtivos.length > 0
+      ? responsaveisAtivos
+      : [...new Set(rows.map(r => r.responsavel).filter(Boolean))].sort() as string[];
+    const disciplinas = disciplinasAtivas.length > 0
+      ? disciplinasAtivas
+      : [...new Set(rows.map(r => r.disciplina).filter(Boolean))].sort() as string[];
+    const clientes = clientesAtivos.length > 0
+      ? clientesAtivos
+      : [...new Set(rows.map(r => r.cliente).filter(Boolean))].sort() as string[];
     const tipos = [...new Set(rows.map(r => r.tipo).filter(Boolean))].sort() as string[];
     return { anos, status, responsaveis, disciplinas, clientes, tipos };
   }, [rows]);
@@ -62,7 +91,7 @@ export function DashboardBI() {
   // ── Dados filtrados ──
   const dadosFiltrados = useMemo(() => {
     return rows.filter(r => {
-      if (filtros.anos.length && (!r.ano || !filtros.anos.includes(r.ano))) return false;
+      if (filtros.anos.length && !filtros.anos.includes(anoRow(r)!)) return false;
       if (filtros.status.length && !filtros.status.includes(r.status || 'SEM STATUS')) return false;
       if (filtros.responsaveis.length && (!r.responsavel || !filtros.responsaveis.includes(r.responsavel))) return false;
       if (filtros.disciplinas.length && (!r.disciplina || !filtros.disciplinas.includes(r.disciplina))) return false;
@@ -107,12 +136,13 @@ export function DashboardBI() {
   const chartPorAno = useMemo(() => {
     const map: Record<number, { ano: number; fechadas: number; naoFechadas: number; outras: number; valorFechado: number; valorTotal: number }> = {};
     for (const r of dadosFiltrados) {
-      if (!r.ano) continue;
-      if (!map[r.ano]) map[r.ano] = { ano: r.ano, fechadas: 0, naoFechadas: 0, outras: 0, valorFechado: 0, valorTotal: 0 };
-      map[r.ano].valorTotal += r.valor_orcado || 0;
-      if (r.status === 'FECHADO') { map[r.ano].fechadas++; map[r.ano].valorFechado += r.valor_orcado || 0; }
-      else if (r.status === 'NÃO FECHADO' || r.status === 'CANCELADO' || r.status === 'DECLINADO') map[r.ano].naoFechadas++;
-      else map[r.ano].outras++;
+      const a = anoRow(r);
+      if (!a) continue;
+      if (!map[a]) map[a] = { ano: a, fechadas: 0, naoFechadas: 0, outras: 0, valorFechado: 0, valorTotal: 0 };
+      map[a].valorTotal += r.valor_orcado || 0;
+      if (r.status === 'FECHADO') { map[a].fechadas++; map[a].valorFechado += r.valor_orcado || 0; }
+      else if (r.status === 'NÃO FECHADO' || r.status === 'CANCELADO' || r.status === 'DECLINADO') map[a].naoFechadas++;
+      else map[a].outras++;
     }
     return Object.values(map).sort((a, b) => a.ano - b.ano);
   }, [dadosFiltrados]);

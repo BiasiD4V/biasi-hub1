@@ -51,6 +51,7 @@ export function OrcamentosNovos() {
   const [statusOpcoes, setStatusOpcoes] = useState<string[]>([]);
   const [disciplinaOpcoes, setDisciplinaOpcoes] = useState<string[]>([]);
   const [responsavelOpcoes, setResponsavelOpcoes] = useState<string[]>([]);
+  const [clienteOpcoes, setClienteOpcoes] = useState<string[]>([]);
   const [kpis, setKpis] = useState({ total: 0, fechadas: 0, valorTotal: 0 });
   const [propostaEditando, setPropostaEditando] = useState<PropostaSupabase | null>(null);
 
@@ -65,6 +66,7 @@ export function OrcamentosNovos() {
     propostasRepository.listarStatus().then(setStatusOpcoes).catch(console.error);
     propostasRepository.listarDisciplinas().then(setDisciplinaOpcoes).catch(console.error);
     propostasRepository.listarResponsaveis().then(setResponsavelOpcoes).catch(console.error);
+    propostasRepository.listarClientes().then(setClienteOpcoes).catch(console.error);
     propostasRepository
       .buscarKPIs()
       .then((k) => setKpis({ total: k.total, fechadas: k.fechadas, valorTotal: k.valorTotal }))
@@ -591,6 +593,7 @@ export function OrcamentosNovos() {
         statusOpcoes={statusOpcoes}
         disciplinaOpcoes={disciplinaOpcoes}
         responsavelOpcoes={responsavelOpcoes}
+        clienteOpcoes={clienteOpcoes}
       />
 
       {/* Toast Notification */}

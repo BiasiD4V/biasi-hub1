@@ -14,6 +14,7 @@ interface Props {
   statusOpcoes: string[];
   disciplinaOpcoes: string[];
   responsavelOpcoes: string[];
+  clienteOpcoes: string[];
 }
 
 export function ModalEditarProposta({
@@ -23,6 +24,7 @@ export function ModalEditarProposta({
   statusOpcoes,
   disciplinaOpcoes,
   responsavelOpcoes,
+  clienteOpcoes,
 }: Props) {
   const [form, setForm] = useState({
     numero_composto: '',
@@ -213,12 +215,16 @@ export function ModalEditarProposta({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Cliente</label>
-                <input
-                  type="text"
+                <select
                   value={form.cliente}
                   onChange={(e) => handleChange('cliente', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">— Selecionar —</option>
+                  {clienteOpcoes.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Obra</label>

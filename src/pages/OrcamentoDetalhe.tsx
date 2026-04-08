@@ -50,9 +50,6 @@ function lsSaveFollowUps(propostaId: string, items: FollowUp[]) {
 function lsGetPendencias(propostaId: string): Pendencia[] {
   try { return JSON.parse(localStorage.getItem(lsKey(propostaId, 'pendencias')) || '[]'); } catch { return []; }
 }
-function lsSavePendencias(propostaId: string, items: Pendencia[]) {
-  try { localStorage.setItem(lsKey(propostaId, 'pendencias'), JSON.stringify(items)); } catch { /* */ }
-}
 
 function assinaturaMudanca(m: MudancaEtapa): string {
   return [
@@ -238,7 +235,8 @@ export function OrcamentoDetalhe() {
       propostasRepository.buscarPorId(id),
       propostasRepository.listarMudancasEtapa(id),
       propostasRepository.listarFollowUps(id),
-    ]).then(([p, mudancas, fups]) => {
+      propostasRepository.listarPendencias(id),
+    ]).then(([p, mudancas, fups, pends]) => {
       if (!cancelado) {
         setPropostaSupa(p);
         const locaisMudancas = lsGetMudancas(id);
@@ -246,7 +244,6 @@ export function OrcamentoDetalhe() {
         // Mescla Supabase + localStorage para evitar "sumir" em cenários de persistência parcial.
         const m = mesclarMudancas(mudancas.map(rowParaMudanca), locaisMudancas);
         const f = mesclarFollowUps(fups.map(rowParaFollowUp), locaisFollowUps);
-        const pends = lsGetPendencias(id); // Pendências são sempre do localStorage
         lsSaveMudancas(id, m);
         lsSaveFollowUps(id, f);
         setLocalMudancas(m);
@@ -438,20 +435,19 @@ export function OrcamentoDetalhe() {
     }
   }
 
-  function handleResolverPendencia(pendenciaId: string) {
+  async function handleResolverPendencia(pendenciaId: string) {
     if (isSupa) {
-      // Quando é Supabase, trabalhar com localStorage
+      const snapshot = localPendencias;
       setLocalPendencias((prev) => {
-        const next = prev.map((p) =>
+        return prev.map((p) =>
           p.id === pendenciaId && p.status === 'aberta'
             ? { ...p, status: 'resolvida' as const }
             : p
-        );
-        lsSavePendencias(id!, next);
-        return next;
+        )
       });
+      const ok = await propostasRepository.resolverPendencia(pendenciaId);
+      if (!ok) setLocalPendencias(snapshot);
     } else {
-      // Quando é mock, usar o contexto
       resolverPendencia(pendenciaId);
     }
   }
@@ -729,7 +725,7 @@ export function OrcamentoDetalhe() {
             {/* Pendências */}
             <BlocoPendencias
               pendencias={pendencias}
-              onResolver={(pendenciaId) => handleResolverPendencia(pendenciaId)}
+              onResolver={(pendenciaId) => { void handleResolverPendencia(pendenciaId); }}
               onAdicionarNova={() => setModalPendenciaAberto(true)}
             />
 
@@ -920,19 +916,19 @@ export function OrcamentoDetalhe() {
           aberto={modalPendenciaAberto}
           onFechar={() => setModalPendenciaAberto(false)}
           orcamentoId={id}
-          onRegistrada={(pend) => {
-            if (isSupa) {
-              // Salvar no state + localStorage imediatamente
-              setLocalPendencias((prev) => {
-                const next = [pend, ...prev];
-                lsSavePendencias(id, next);
-                return next;
-              });
-            } else {
-              // Para mock, apenas recarregar seria necessário, mas como estamos usando o contexto,
-              // o adicionarPendencia será chamado pelo modal
+          onRegistrada={isSupa ? async (pend) => {
+            const salvo = await propostasRepository.inserirPendencia({
+              orcamentoId: id,
+              descricao: pend.descricao,
+              status: pend.status,
+              responsavel: pend.responsavel,
+              prazo: pend.prazo,
+            });
+            if (!salvo) {
+              throw new Error('Falha ao salvar pendência no banco');
             }
-          }}
+            setLocalPendencias((prev) => [salvo, ...prev]);
+          } : undefined}
         />
       )}
     </div>

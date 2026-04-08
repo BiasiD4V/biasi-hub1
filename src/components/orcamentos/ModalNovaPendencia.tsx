@@ -8,7 +8,7 @@ interface ModalNovaPendenciaProps {
   aberto: boolean;
   onFechar: () => void;
   orcamentoId: string;
-  onRegistrada?: (pendencia: Pendencia) => void;
+  onRegistrada?: (pendencia: Pendencia) => void | Promise<void>;
 }
 
 interface FormPendencia {
@@ -60,7 +60,6 @@ export function ModalNovaPendencia({ aberto, onFechar, orcamentoId, onRegistrada
     }
 
     setSalvando(true);
-    await new Promise((r) => setTimeout(r, 300));
 
     const novaPendencia: Omit<Pendencia, 'id' | 'criadaEm'> = {
       orcamentoId,
@@ -70,19 +69,25 @@ export function ModalNovaPendencia({ aberto, onFechar, orcamentoId, onRegistrada
       prazo: form.prazo,
     };
 
-    if (onRegistrada) {
-      const completa: Pendencia = {
-        ...novaPendencia,
-        id: crypto.randomUUID(),
-        criadaEm: new Date().toISOString(),
-      };
-      onRegistrada(completa);
-    } else {
-      adicionarPendencia(novaPendencia);
-    }
+    try {
+      if (onRegistrada) {
+        // onRegistrada (OrcamentoDetalhe) é responsável por salvar no Supabase
+        const completa: Pendencia = {
+          ...novaPendencia,
+          id: crypto.randomUUID(),
+          criadaEm: new Date().toISOString(),
+        };
+        await onRegistrada(completa);
+      } else {
+        adicionarPendencia(novaPendencia);
+      }
 
-    setSalvando(false);
-    fechar();
+      setSalvando(false);
+      fechar();
+    } catch {
+      setErro('Não foi possível salvar a pendência. Tente novamente.');
+      setSalvando(false);
+    }
   }
 
   return (
