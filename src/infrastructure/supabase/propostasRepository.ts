@@ -492,84 +492,44 @@ export const propostasRepository = {
   // === Pendências (compatível com schema novo e legado) ===
 
   async listarPendencias(orcamentoId: string): Promise<Pendencia[]> {
-    const tentativas = [
-      () => supabase.from('pendencias').select('*').eq('proposta_id', orcamentoId),
-      () => supabase.from('pendencias').select('*').eq('orcamento_id', orcamentoId),
-    ]
+    const { data, error } = await supabase
+      .from('pendencias')
+      .select('*')
+      .eq('orcamento_id', orcamentoId)
+      .order('criado_em', { ascending: false })
 
-    let ultimoErro: unknown = null
-    for (const tentar of tentativas) {
-      const { data, error } = await tentar()
-      if (!error) {
-        return ((data || []) as PendenciaRowFlex[])
-          .map(rowParaPendencia)
-          .sort((a, b) => b.criadaEm.localeCompare(a.criadaEm))
-      }
-      ultimoErro = error
-    }
-
-    if (ultimoErro) console.error('listarPendencias:', ultimoErro)
-    return []
+    if (error) { console.error('listarPendencias:', error); return [] }
+    return ((data || []) as PendenciaRowFlex[]).map(rowParaPendencia)
   },
 
   async inserirPendencia(
     pendencia: Pick<Pendencia, 'orcamentoId' | 'descricao' | 'status' | 'responsavel' | 'prazo'>
   ): Promise<Pendencia | null> {
-    const payloadNovo = {
-      proposta_id: pendencia.orcamentoId,
-      descricao: pendencia.descricao,
-      status: pendencia.status,
-      prazo: pendencia.prazo || null,
-      responsavel: pendencia.responsavel || '',
-    }
+    const { data, error } = await supabase
+      .from('pendencias')
+      .insert({
+        orcamento_id: pendencia.orcamentoId,
+        titulo: pendencia.descricao,
+        descricao: pendencia.descricao,
+        responsavel: pendencia.responsavel || '',
+        prazo: pendencia.prazo || null,
+        resolvida: pendencia.status === 'resolvida',
+      })
+      .select('*')
+      .single()
 
-    const payloadLegado = {
-      orcamento_id: pendencia.orcamentoId,
-      titulo: pendencia.descricao,
-      descricao: pendencia.descricao,
-      responsavel: pendencia.responsavel || '',
-      prazo: pendencia.prazo || null,
-      resolvida: pendencia.status === 'resolvida',
-    }
-
-    const tentativas = [payloadNovo, payloadLegado]
-    let ultimoErro: unknown = null
-
-    for (const payload of tentativas) {
-      const { data, error } = await supabase
-        .from('pendencias')
-        .insert(payload)
-        .select('*')
-        .single()
-
-      if (!error && data) return rowParaPendencia(data as PendenciaRowFlex)
-      ultimoErro = error
-    }
-
-    if (ultimoErro) console.error('inserirPendencia:', ultimoErro)
-    return null
+    if (error) { console.error('inserirPendencia:', error); return null }
+    return rowParaPendencia(data as PendenciaRowFlex)
   },
 
   async resolverPendencia(pendenciaId: string): Promise<boolean> {
-    const tentativas = [
-      { status: 'resolvida', resolvido_em: new Date().toISOString() },
-      { status: 'resolvida' },
-      { resolvida: true },
-    ]
+    const { error } = await supabase
+      .from('pendencias')
+      .update({ resolvida: true, atualizado_em: new Date().toISOString() })
+      .eq('id', pendenciaId)
 
-    let ultimoErro: unknown = null
-    for (const payload of tentativas) {
-      const { error } = await supabase
-        .from('pendencias')
-        .update(payload)
-        .eq('id', pendenciaId)
-
-      if (!error) return true
-      ultimoErro = error
-    }
-
-    if (ultimoErro) console.error('resolverPendencia:', ultimoErro)
-    return false
+    if (error) { console.error('resolverPendencia:', error); return false }
+    return true
   },
 
   async atualizarMudancaEtapa(id: string, dados: Partial<Omit<MudancaEtapaRow, 'id' | 'created_at'>>): Promise<boolean> {
